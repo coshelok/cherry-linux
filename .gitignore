@@ -1,4 +1,4 @@
-kernel/ \*\*/target/ sources/ rootfs/
+\*\*/target/ sources/ rootfs/
 
 \*.iso \*.cpio.gz \*.bak \*.sfs vmlinuz init
 

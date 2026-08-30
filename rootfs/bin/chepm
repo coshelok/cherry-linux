@@ -1,0 +1,78 @@
+#!/bin/sh
+# chepm - The Cherry Linux Package Manager
+
+REPO_URL="cherepo"
+STATE_DIR="/var/lib/chepm"
+MANIFEST_DIR="$STATE_DIR/manifests"
+
+mkdir -p "$MANIFEST_DIR"
+
+log() { printf "\033[1;36m[chepm]\033[0m %s\n" "$*"; }
+err() { printf "\033[1;31m[chepm]\033[0m %s\n" "$*"; exit 1; }
+
+cmd_install() {
+    local pkg=$1
+    [ -z "$pkg" ] && err "Specify package name"
+    
+    if [ -f "$MANIFEST_DIR/$pkg" ]; then
+        log "Package '$pkg' is already installed."
+        return 0
+    fi
+
+    log "Fetching $pkg from $REPO_URL..."
+    local tmp_tar="/tmp/${pkg}.tar.gz"
+    
+    if [ "$REPO_URL" = "cherepo" ]; then
+        log "WARNING: Using placeholder cherepo. Expecting local archive at $tmp_tar"
+        [ ! -f "$tmp_tar" ] && err "Place a test package at $tmp_tar to simulate download."
+    else
+        wget -q --show-progress "$REPO_URL/${pkg}.tar.gz" -O "$tmp_tar" || err "Failed to download $pkg"
+    fi
+
+    log "Extracting $pkg to / ..."
+    tar -xzvf "$tmp_tar" -C / > "$MANIFEST_DIR/$pkg" || err "Failed to extract archive"
+
+    rm -f "$tmp_tar"
+    log "Package '$pkg' installed successfully!"
+}
+
+cmd_remove() {
+    local pkg=$1
+    [ -z "$pkg" ] && err "Specify package name"
+    
+    local manifest="$MANIFEST_DIR/$pkg"
+    [ ! -f "$manifest" ] && err "Package '$pkg' is not installed."
+
+    log "Removing $pkg..."
+    tac "$manifest" | while read -r file; do
+        local target="/$file"
+        if [ -f "$target" ] || [ -L "$target" ]; then
+            rm -f "$target"
+        elif [ -d "$target" ]; then
+            rmdir "$target" 2>/dev/null || true
+        fi
+    done
+
+    rm -f "$manifest"
+    log "Package '$pkg' removed successfully!"
+}
+
+cmd_list() {
+    log "Installed packages:"
+    if [ -z "$(ls -A "$MANIFEST_DIR" 2>/dev/null)" ]; then
+        echo "  (none)"
+    else
+        ls -1 "$MANIFEST_DIR" | while read -r pkg; do
+            echo "  - $pkg"
+        done
+    fi
+}
+
+case "$1" in
+    -ins) cmd_install "$2" ;;
+    -del) cmd_remove "$2" ;;
+    -ls)  cmd_list ;;
+    *)       
+        echo "Usage: chepm {-ins|-del|-ls} <package>"
+        ;;
+esac
