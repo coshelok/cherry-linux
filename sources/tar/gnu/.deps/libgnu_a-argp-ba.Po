@@ -1,2 +1,0 @@
-libgnu_a-argp-ba.o: argp-ba.c /usr/include/stdc-predef.h
-/usr/include/stdc-predef.h:
