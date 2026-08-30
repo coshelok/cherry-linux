@@ -1,7 +1,7 @@
 lib/glthread/libsed_a-lock.o: lib/glthread/lock.c \
  /usr/include/stdc-predef.h config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdalign.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdalign.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -11,7 +11,7 @@ lib/glthread/libsed_a-lock.o: lib/glthread/lock.c \
  /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
  /usr/include/asm-generic/errno-base.h /usr/include/bits/types/error_t.h \
  lib/stdlib.h /usr/include/stdlib.h /usr/include/bits/libc-header-start.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
  /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
  /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
@@ -33,8 +33,8 @@ lib/glthread/libsed_a-lock.o: lib/glthread/lock.c \
  /usr/include/bits/types/once_flag.h /usr/include/bits/stdlib-float.h
 /usr/include/stdc-predef.h:
 config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdalign.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdalign.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -55,7 +55,7 @@ lib/glthread/lock.h:
 lib/stdlib.h:
 /usr/include/stdlib.h:
 /usr/include/bits/libc-header-start.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/waitflags.h:
 /usr/include/bits/waitstatus.h:
 /usr/include/bits/floatn.h:

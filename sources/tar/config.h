@@ -790,7 +790,7 @@
 /* #undef HAVE_ACL_CREATE_ENTRY_NP */
 
 /* Define to 1 if you have the `acl_delete_def_file' function. */
-#define HAVE_ACL_DELETE_DEF_FILE 1
+/* #undef HAVE_ACL_DELETE_DEF_FILE */
 
 /* Define to 1 if you have the `acl_delete_fd_np' function. */
 /* #undef HAVE_ACL_DELETE_FD_NP */
@@ -799,40 +799,40 @@
 /* #undef HAVE_ACL_DELETE_FILE_NP */
 
 /* Define to 1 if you have the `acl_entries' function. */
-#define HAVE_ACL_ENTRIES 1
+/* #undef HAVE_ACL_ENTRIES */
 
 /* Define to 1 if you have the `acl_extended_file' function. */
-#define HAVE_ACL_EXTENDED_FILE 1
+/* #undef HAVE_ACL_EXTENDED_FILE */
 
 /* Define to 1 if the constant ACL_FIRST_ENTRY exists. */
-#define HAVE_ACL_FIRST_ENTRY 1
+/* #undef HAVE_ACL_FIRST_ENTRY */
 
 /* Define to 1 if you have the `acl_free' function. */
-#define HAVE_ACL_FREE 1
+/* #undef HAVE_ACL_FREE */
 
 /* Define to 1 if you have the `acl_free_text' function. */
 /* #undef HAVE_ACL_FREE_TEXT */
 
 /* Define to 1 if you have the `acl_from_mode' function. */
-#define HAVE_ACL_FROM_MODE 1
+/* #undef HAVE_ACL_FROM_MODE */
 
 /* Define to 1 if you have the `acl_from_text' function. */
-#define HAVE_ACL_FROM_TEXT 1
+/* #undef HAVE_ACL_FROM_TEXT */
 
 /* Define to 1 if you have the `acl_get_fd' function. */
-#define HAVE_ACL_GET_FD 1
+/* #undef HAVE_ACL_GET_FD */
 
 /* Define to 1 if you have the `acl_get_file' function. */
-#define HAVE_ACL_GET_FILE 1
+/* #undef HAVE_ACL_GET_FILE */
 
 /* Define to 1 if you have the <acl/libacl.h> header file. */
-#define HAVE_ACL_LIBACL_H 1
+/* #undef HAVE_ACL_LIBACL_H */
 
 /* Define to 1 if you have the `acl_set_fd' function. */
-#define HAVE_ACL_SET_FD 1
+/* #undef HAVE_ACL_SET_FD */
 
 /* Define to 1 if you have the `acl_set_file' function. */
-#define HAVE_ACL_SET_FILE 1
+/* #undef HAVE_ACL_SET_FILE */
 
 /* Define to 1 if you have the `acl_to_short_text' function. */
 /* #undef HAVE_ACL_TO_SHORT_TEXT */
@@ -1510,7 +1510,7 @@
 #define HAVE_PIPE 1
 
 /* Define when we have working POSIX acls */
-#define HAVE_POSIX_ACLS /**/
+/* #undef HAVE_POSIX_ACLS */
 
 /* Define to 1 if you have the <priv.h> header file. */
 /* #undef HAVE_PRIV_H */
@@ -1740,7 +1740,7 @@
 #define HAVE_SYSEXITS_H 1
 
 /* Define to 1 if you have the <sys/acl.h> header file. */
-#define HAVE_SYS_ACL_H 1
+/* #undef HAVE_SYS_ACL_H */
 
 /* Define to 1 if you have the <sys/bitypes.h> header file. */
 /* #undef HAVE_SYS_BITYPES_H */
@@ -1925,7 +1925,7 @@
 #define HAVE_WORKING_UTIMES 1
 
 /* Define when we have working linux xattrs. */
-#define HAVE_XATTRS /**/
+/* #undef HAVE_XATTRS */
 
 /* Define to 1 if you have the <xlocale.h> header file. */
 /* #undef HAVE_XLOCALE_H */
@@ -2321,7 +2321,7 @@
 /* #undef UNLINK_PARENT_BUG */
 
 /* Define to nonzero if you want access control list support. */
-#define USE_ACL 1
+#define USE_ACL 0
 
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE

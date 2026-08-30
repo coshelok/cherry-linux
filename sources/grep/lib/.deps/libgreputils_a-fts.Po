@@ -1,11 +1,11 @@
 libgreputils_a-fts.o: fts.c /usr/include/stdc-predef.h ../config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h fts_.h stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h sys/types.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h sys/types.h \
  /usr/include/sys/types.h /usr/include/bits/types.h \
  /usr/include/bits/typesizes.h /usr/include/bits/time64.h \
  /usr/include/bits/types/clock_t.h /usr/include/bits/types/clockid_t.h \
@@ -40,8 +40,8 @@ libgreputils_a-fts.o: fts.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/statx-generic.h \
  /usr/include/bits/types/struct_statx_timestamp.h \
  /usr/include/bits/types/struct_statx.h i-ring.h /usr/include/sys/param.h \
- limits.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h \
+ limits.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h \
  /usr/include/limits.h /usr/include/bits/libc-header-start.h \
  /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h \
  /usr/include/bits/uio_lim.h signal.h /usr/include/signal.h \
@@ -70,7 +70,7 @@ libgreputils_a-fts.o: fts.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/errno.h /usr/include/linux/errno.h \
  /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
  /usr/include/asm-generic/errno-base.h /usr/include/bits/types/error_t.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/wchar.h \
  /usr/include/bits/stdint-uintn.h /usr/include/bits/stdint-least.h \
  stdlib.h /usr/include/stdlib.h /usr/include/bits/waitflags.h \
@@ -80,7 +80,7 @@ libgreputils_a-fts.o: fts.c /usr/include/stdc-predef.h ../config.h \
  string.h /usr/include/string.h /usr/include/strings.h attribute.h \
  fcntl--.h fcntl-safer.h flexmember.h openat.h opendirat.h same-inode.h \
  fts-cycle.c cycle-check.h dev-ino.h hash.h stdio.h /usr/include/stdio.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
  /usr/include/bits/types/__fpos_t.h /usr/include/bits/types/__mbstate_t.h \
  /usr/include/bits/types/__fpos64_t.h /usr/include/bits/types/__FILE.h \
  /usr/include/bits/types/FILE.h /usr/include/bits/types/struct_FILE.h \
@@ -89,7 +89,7 @@ libgreputils_a-fts.o: fts.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/sys/statfs.h /usr/include/bits/statfs.h
 /usr/include/stdc-predef.h:
 ../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -101,7 +101,7 @@ libgreputils_a-fts.o: fts.c /usr/include/stdc-predef.h ../config.h \
 /usr/include/gnu/stubs-64.h:
 fts_.h:
 stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 sys/types.h:
 /usr/include/sys/types.h:
 /usr/include/bits/types.h:
@@ -168,8 +168,8 @@ time.h:
 i-ring.h:
 /usr/include/sys/param.h:
 limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h:
 /usr/include/limits.h:
 /usr/include/bits/libc-header-start.h:
 /usr/include/bits/posix2_lim.h:
@@ -227,7 +227,7 @@ fcntl.h:
 /usr/include/asm-generic/errno.h:
 /usr/include/asm-generic/errno-base.h:
 /usr/include/bits/types/error_t.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/wchar.h:
 /usr/include/bits/stdint-uintn.h:
@@ -257,7 +257,7 @@ dev-ino.h:
 hash.h:
 stdio.h:
 /usr/include/stdio.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
 /usr/include/bits/types/__fpos_t.h:
 /usr/include/bits/types/__mbstate_t.h:
 /usr/include/bits/types/__fpos64_t.h:

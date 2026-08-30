@@ -8,8 +8,8 @@ progname.o: progname.c /usr/include/stdc-predef.h ../config.h progname.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/bits/types/error_t.h stdio.h /usr/include/stdio.h \
  /usr/include/bits/libc-header-start.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
  /usr/include/bits/types.h /usr/include/bits/typesizes.h \
  /usr/include/bits/time64.h /usr/include/bits/types/__fpos_t.h \
  /usr/include/bits/types/__mbstate_t.h \
@@ -57,8 +57,8 @@ progname.h:
 stdio.h:
 /usr/include/stdio.h:
 /usr/include/bits/libc-header-start.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
 /usr/include/bits/types.h:
 /usr/include/bits/typesizes.h:
 /usr/include/bits/time64.h:

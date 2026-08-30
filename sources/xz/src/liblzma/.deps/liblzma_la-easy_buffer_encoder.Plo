@@ -1,20 +1,20 @@
 liblzma_la-easy_buffer_encoder.lo: common/easy_buffer_encoder.c \
  /usr/include/stdc-predef.h common/easy_preset.h common/common.h \
  ../../src/common/sysdefs.h ../../config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/inttypes.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
  /usr/include/bits/types.h /usr/include/bits/typesizes.h \
  /usr/include/bits/time64.h /usr/include/bits/wchar.h \
  /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h \
  /usr/include/bits/stdint-least.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h \
  /usr/include/limits.h /usr/include/bits/posix1_lim.h \
  /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
  /usr/include/bits/pthread_stack_min-dynamic.h \
@@ -38,7 +38,7 @@ liblzma_la-easy_buffer_encoder.lo: common/easy_buffer_encoder.c \
  /usr/include/bits/struct_rwlock.h /usr/include/alloca.h \
  /usr/include/bits/types/once_flag.h /usr/include/bits/stdlib-float.h \
  /usr/include/assert.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/string.h /usr/include/strings.h ../../src/common/mythread.h \
  ../../src/common/sysdefs.h /usr/include/pthread.h /usr/include/sched.h \
  /usr/include/bits/sched.h /usr/include/linux/sched/types.h \
@@ -88,7 +88,7 @@ common/easy_preset.h:
 common/common.h:
 ../../src/common/sysdefs.h:
 ../../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/inttypes.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -98,7 +98,7 @@ common/common.h:
 /usr/include/bits/long-double.h:
 /usr/include/gnu/stubs.h:
 /usr/include/gnu/stubs-64.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/libc-header-start.h:
 /usr/include/bits/types.h:
@@ -108,8 +108,8 @@ common/common.h:
 /usr/include/bits/stdint-intn.h:
 /usr/include/bits/stdint-uintn.h:
 /usr/include/bits/stdint-least.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h:
 /usr/include/limits.h:
 /usr/include/bits/posix1_lim.h:
 /usr/include/bits/local_lim.h:
@@ -151,7 +151,7 @@ common/common.h:
 /usr/include/bits/types/once_flag.h:
 /usr/include/bits/stdlib-float.h:
 /usr/include/assert.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/string.h:
 /usr/include/strings.h:
 ../../src/common/mythread.h:

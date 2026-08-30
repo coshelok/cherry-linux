@@ -1,7 +1,7 @@
 vasnprintf.o: vasnprintf.c /usr/include/stdc-predef.h ../config.h \
  alloca.h vasnprintf.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/locale.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -37,25 +37,25 @@ vasnprintf.o: vasnprintf.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/linux/errno.h /usr/include/asm/errno.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/bits/types/error_t.h limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h \
  /usr/include/limits.h /usr/include/bits/posix1_lim.h \
  /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
  /usr/include/bits/pthread_stack_min-dynamic.h \
  /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h \
  /usr/include/bits/uio_lim.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/float.h printf-parse.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/float.h printf-parse.h \
  printf-args.h wchar.h /usr/include/wchar.h /usr/include/bits/wchar.h \
  /usr/include/bits/types/wint_t.h /usr/include/bits/types/mbstate_t.h \
- xsize.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ xsize.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/stdint-uintn.h \
  /usr/include/bits/stdint-least.h verify.h
 /usr/include/stdc-predef.h:
 ../config.h:
 alloca.h:
 vasnprintf.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/locale.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -125,8 +125,8 @@ string.h:
 /usr/include/asm-generic/errno-base.h:
 /usr/include/bits/types/error_t.h:
 limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h:
 /usr/include/limits.h:
 /usr/include/bits/posix1_lim.h:
 /usr/include/bits/local_lim.h:
@@ -135,7 +135,7 @@ limits.h:
 /usr/include/bits/posix2_lim.h:
 /usr/include/bits/xopen_lim.h:
 /usr/include/bits/uio_lim.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/float.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/float.h:
 printf-parse.h:
 printf-args.h:
 wchar.h:
@@ -144,7 +144,7 @@ wchar.h:
 /usr/include/bits/types/wint_t.h:
 /usr/include/bits/types/mbstate_t.h:
 xsize.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/stdint-uintn.h:
 /usr/include/bits/stdint-least.h:

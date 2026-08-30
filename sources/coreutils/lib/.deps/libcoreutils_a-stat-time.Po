@@ -1,6 +1,6 @@
 lib/libcoreutils_a-stat-time.o: lib/stat-time.c \
  /usr/include/stdc-predef.h lib/config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -9,8 +9,8 @@ lib/libcoreutils_a-stat-time.o: lib/stat-time.c \
  /usr/include/bits/errno.h /usr/include/linux/errno.h \
  /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
  /usr/include/asm-generic/errno-base.h /usr/include/bits/types/error_t.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h lib/stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h lib/sys/stat.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h lib/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h lib/sys/stat.h \
  lib/sys/types.h /usr/include/sys/types.h /usr/include/bits/types.h \
  /usr/include/bits/typesizes.h /usr/include/bits/time64.h \
  /usr/include/bits/types/clock_t.h /usr/include/bits/types/clockid_t.h \
@@ -43,7 +43,7 @@ lib/libcoreutils_a-stat-time.o: lib/stat-time.c \
  /usr/include/bits/types/struct_statx.h
 /usr/include/stdc-predef.h:
 lib/config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -61,9 +61,9 @@ lib/stat-time.h:
 /usr/include/asm-generic/errno.h:
 /usr/include/asm-generic/errno-base.h:
 /usr/include/bits/types/error_t.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h:
 lib/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 lib/sys/stat.h:
 lib/sys/types.h:
 /usr/include/sys/types.h:

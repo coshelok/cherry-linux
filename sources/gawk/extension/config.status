@@ -432,7 +432,7 @@ Copyright (C) 2021 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/home/coshelok/the-fad-project/sources/gawk/extension'
+ac_pwd='/home/coshelok/cherry/sources/gawk/extension'
 srcdir='.'
 INSTALL='./../build-aux//install-sh -c'
 MKDIR_P='/usr/bin/mkdir -p'
@@ -682,7 +682,7 @@ postuninstall_cmds=''
 finish_cmds='PATH="\$PATH:/sbin" ldconfig -n $libdir'
 finish_eval=''
 hardcode_into_libs='yes'
-sys_lib_search_path_spec='/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1 /usr/lib /lib '
+sys_lib_search_path_spec='/usr/lib/gcc/x86_64-pc-linux-gnu/16 /usr/lib /lib '
 configure_time_dlsearch_path='/lib /usr/lib /opt/cuda/lib64 /opt/cuda/nvvm/lib64 /usr/lib32 /usr/lib/libfakeroot '
 configure_time_lt_sys_library_path=''
 hardcode_action='immediate'
@@ -913,12 +913,12 @@ S["mkdir_p"]="$(MKDIR_P)"
 S["MKDIR_P"]="/usr/bin/mkdir -p"
 S["INSTALL_STRIP_PROGRAM"]="$(install_sh) -c -s"
 S["STRIP"]="strip"
-S["install_sh"]="${SHELL} /home/coshelok/the-fad-project/sources/gawk/build-aux/install-sh"
-S["MAKEINFO"]="${SHELL} '/home/coshelok/the-fad-project/sources/gawk/build-aux/missing' makeinfo"
-S["AUTOHEADER"]="${SHELL} '/home/coshelok/the-fad-project/sources/gawk/build-aux/missing' autoheader"
-S["AUTOMAKE"]="${SHELL} '/home/coshelok/the-fad-project/sources/gawk/build-aux/missing' automake-1.16"
-S["AUTOCONF"]="${SHELL} '/home/coshelok/the-fad-project/sources/gawk/build-aux/missing' autoconf"
-S["ACLOCAL"]="${SHELL} '/home/coshelok/the-fad-project/sources/gawk/build-aux/missing' aclocal-1.16"
+S["install_sh"]="${SHELL} /home/coshelok/cherry/sources/gawk/build-aux/install-sh"
+S["MAKEINFO"]="${SHELL} '/home/coshelok/cherry/sources/gawk/build-aux/missing' makeinfo"
+S["AUTOHEADER"]="${SHELL} '/home/coshelok/cherry/sources/gawk/build-aux/missing' autoheader"
+S["AUTOMAKE"]="${SHELL} '/home/coshelok/cherry/sources/gawk/build-aux/missing' automake-1.16"
+S["AUTOCONF"]="${SHELL} '/home/coshelok/cherry/sources/gawk/build-aux/missing' autoconf"
+S["ACLOCAL"]="${SHELL} '/home/coshelok/cherry/sources/gawk/build-aux/missing' aclocal-1.16"
 S["VERSION"]="5.3.0"
 S["PACKAGE"]="gawk-extensions"
 S["CYGPATH_W"]="echo"

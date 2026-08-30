@@ -1,5 +1,5 @@
 lib/libcoreutils_a-savedir.o: lib/savedir.c /usr/include/stdc-predef.h \
- lib/config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ lib/config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -10,7 +10,7 @@ lib/libcoreutils_a-savedir.o: lib/savedir.c /usr/include/stdc-predef.h \
  /usr/include/bits/dirent.h /usr/include/bits/posix1_lim.h \
  /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
  /usr/include/bits/pthread_stack_min-dynamic.h lib/stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/dirent_ext.h lib/sys/types.h /usr/include/sys/types.h \
  /usr/include/bits/types/clock_t.h /usr/include/bits/types/clockid_t.h \
  /usr/include/bits/types/time_t.h /usr/include/bits/types/timer_t.h \
@@ -36,12 +36,12 @@ lib/libcoreutils_a-savedir.o: lib/savedir.c /usr/include/stdc-predef.h \
  /usr/include/bits/types/error_t.h lib/dirent--.h lib/dirent-safer.h \
  lib/string.h /usr/include/string.h /usr/include/strings.h \
  lib/attribute.h lib/xalloc.h lib/idx.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/wchar.h \
  /usr/include/bits/stdint-uintn.h /usr/include/bits/stdint-least.h
 /usr/include/stdc-predef.h:
 lib/config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -63,7 +63,7 @@ lib/dirent.h:
 /usr/include/linux/limits.h:
 /usr/include/bits/pthread_stack_min-dynamic.h:
 lib/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/dirent_ext.h:
 lib/sys/types.h:
 /usr/include/sys/types.h:
@@ -117,7 +117,7 @@ lib/string.h:
 lib/attribute.h:
 lib/xalloc.h:
 lib/idx.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/wchar.h:
 /usr/include/bits/stdint-uintn.h:

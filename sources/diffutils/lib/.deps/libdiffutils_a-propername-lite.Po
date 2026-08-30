@@ -1,12 +1,12 @@
 libdiffutils_a-propername-lite.o: propername-lite.c \
  /usr/include/stdc-predef.h config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h propername.h c-strcase.h stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h gettext.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h gettext.h \
  /usr/include/libintl.h locale.h /usr/include/locale.h \
  /usr/include/bits/locale.h /usr/include/bits/types/locale_t.h \
  /usr/include/bits/types/__locale_t.h setlocale_null.h arg-nonnull.h \
@@ -33,7 +33,7 @@ libdiffutils_a-propername-lite.o: propername-lite.c \
  localcharset.h
 /usr/include/stdc-predef.h:
 config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -46,7 +46,7 @@ config.h:
 propername.h:
 c-strcase.h:
 stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 gettext.h:
 /usr/include/libintl.h:
 locale.h:

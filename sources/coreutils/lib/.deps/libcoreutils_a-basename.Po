@@ -1,12 +1,12 @@
 lib/libcoreutils_a-basename.o: lib/basename.c /usr/include/stdc-predef.h \
- lib/config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ lib/config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h lib/dirname.h lib/stdlib.h \
  /usr/include/stdlib.h /usr/include/bits/libc-header-start.h lib/stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
  /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
  /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
@@ -28,12 +28,12 @@ lib/libcoreutils_a-basename.o: lib/basename.c /usr/include/stdc-predef.h \
  /usr/include/bits/types/once_flag.h /usr/include/bits/stdlib-float.h \
  lib/filename.h lib/string.h /usr/include/string.h /usr/include/strings.h \
  lib/basename-lgpl.h lib/xalloc.h lib/idx.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/wchar.h \
  /usr/include/bits/stdint-uintn.h /usr/include/bits/stdint-least.h
 /usr/include/stdc-predef.h:
 lib/config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -48,7 +48,7 @@ lib/stdlib.h:
 /usr/include/stdlib.h:
 /usr/include/bits/libc-header-start.h:
 lib/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/waitflags.h:
 /usr/include/bits/waitstatus.h:
 /usr/include/bits/floatn.h:
@@ -93,7 +93,7 @@ lib/string.h:
 lib/basename-lgpl.h:
 lib/xalloc.h:
 lib/idx.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/wchar.h:
 /usr/include/bits/stdint-uintn.h:

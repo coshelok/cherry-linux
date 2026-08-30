@@ -38,7 +38,7 @@ loadablesdir = ${libdir}/bash
 headersdir = $(includedir)/$(PACKAGE_NAME)
 
 topdir = ../..
-BUILD_DIR = /home/coshelok/the-fad-project/sources/bash
+BUILD_DIR = /home/coshelok/cherry/sources/bash
 srcdir = .
 
 
@@ -61,7 +61,7 @@ host_os = linux-gnu
 host_cpu = x86_64
 host_vendor = pc
 
-CFLAGS = -std=gnu11 -fpermissive -Wno-error
+CFLAGS = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes
 LOCAL_CFLAGS = 
 DEFS = -DHAVE_CONFIG_H
 LOCAL_DEFS = -DSHELL

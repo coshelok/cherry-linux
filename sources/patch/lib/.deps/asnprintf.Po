@@ -1,8 +1,8 @@
 asnprintf.o: asnprintf.c /usr/include/stdc-predef.h ../config.h \
- vasnprintf.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h
+ vasnprintf.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h
 /usr/include/stdc-predef.h:
 ../config.h:
 vasnprintf.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:

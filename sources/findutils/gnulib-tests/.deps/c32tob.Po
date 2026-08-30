@@ -1,22 +1,21 @@
 c32tob.o: c32tob.c /usr/include/stdc-predef.h ../config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h ../gl/lib/uchar.h /usr/include/uchar.h \
- ../gl/lib/stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ ../gl/lib/stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/types.h /usr/include/bits/typesizes.h \
  /usr/include/bits/time64.h /usr/include/bits/types/mbstate_t.h \
  /usr/include/bits/types/__mbstate_t.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
  /usr/include/bits/wchar.h /usr/include/bits/stdint-intn.h \
  /usr/include/bits/stdint-uintn.h /usr/include/bits/stdint-least.h \
  ../gl/lib/wchar.h /usr/include/wchar.h /usr/include/bits/floatn.h \
  /usr/include/bits/floatn-common.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
  /usr/include/bits/types/wint_t.h /usr/include/bits/types/__FILE.h \
  /usr/include/bits/types/FILE.h /usr/include/bits/types/locale_t.h \
  /usr/include/bits/types/__locale_t.h ../gl/lib/string.h \
@@ -42,7 +41,7 @@ c32tob.o: c32tob.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/struct_rwlock.h
 /usr/include/stdc-predef.h:
 ../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -55,13 +54,13 @@ c32tob.o: c32tob.c /usr/include/stdc-predef.h ../config.h \
 ../gl/lib/uchar.h:
 /usr/include/uchar.h:
 ../gl/lib/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/types.h:
 /usr/include/bits/typesizes.h:
 /usr/include/bits/time64.h:
 /usr/include/bits/types/mbstate_t.h:
 /usr/include/bits/types/__mbstate_t.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/libc-header-start.h:
 /usr/include/bits/wchar.h:
@@ -72,7 +71,7 @@ c32tob.o: c32tob.c /usr/include/stdc-predef.h ../config.h \
 /usr/include/wchar.h:
 /usr/include/bits/floatn.h:
 /usr/include/bits/floatn-common.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
 /usr/include/bits/types/wint_t.h:
 /usr/include/bits/types/__FILE.h:
 /usr/include/bits/types/FILE.h:

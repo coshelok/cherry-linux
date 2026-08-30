@@ -1,5 +1,5 @@
 exec.o: exec.c /usr/include/stdc-predef.h ../config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -13,7 +13,7 @@ exec.o: exec.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/time64.h /usr/include/bits/types/clock_t.h \
  /usr/include/bits/types/clockid_t.h /usr/include/bits/types/time_t.h \
  /usr/include/bits/types/timer_t.h ../gl/lib/stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/stdint-intn.h /usr/include/endian.h \
  /usr/include/bits/endian.h /usr/include/bits/endianness.h \
  /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
@@ -62,7 +62,7 @@ exec.o: exec.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/string.h ../gl/lib/strings.h /usr/include/strings.h \
  ../gl/lib/basename-lgpl.h ../gl/lib/fcntl--.h ../gl/lib/fcntl-safer.h \
  ../gl/lib/save-cwd.h ../gl/lib/xalloc.h ../gl/lib/idx.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/wchar.h \
  /usr/include/bits/stdint-uintn.h /usr/include/bits/stdint-least.h \
  ../lib/buildcmd.h defs.h ../gl/lib/sys/stat.h ../gl/lib/time.h \
@@ -74,14 +74,14 @@ exec.o: exec.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/types/struct_statx_timestamp.h \
  /usr/include/bits/types/struct_statx.h ../gl/lib/stdio.h \
  /usr/include/stdio.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
  /usr/include/bits/types/__fpos_t.h /usr/include/bits/types/__mbstate_t.h \
  /usr/include/bits/types/__fpos64_t.h /usr/include/bits/types/__FILE.h \
  /usr/include/bits/types/FILE.h /usr/include/bits/types/struct_FILE.h \
  /usr/include/bits/types/cookie_io_functions_t.h \
  /usr/include/bits/stdio_lim.h ../gl/lib/limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h \
  /usr/include/limits.h /usr/include/bits/posix1_lim.h \
  /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
  /usr/include/bits/pthread_stack_min-dynamic.h \
@@ -96,7 +96,7 @@ exec.o: exec.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/libintl.h
 /usr/include/stdc-predef.h:
 ../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -124,7 +124,7 @@ exec.o: exec.c /usr/include/stdc-predef.h ../config.h \
 /usr/include/bits/types/time_t.h:
 /usr/include/bits/types/timer_t.h:
 ../gl/lib/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/stdint-intn.h:
 /usr/include/endian.h:
 /usr/include/bits/endian.h:
@@ -223,7 +223,7 @@ exec.o: exec.c /usr/include/stdc-predef.h ../config.h \
 ../gl/lib/save-cwd.h:
 ../gl/lib/xalloc.h:
 ../gl/lib/idx.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/wchar.h:
 /usr/include/bits/stdint-uintn.h:
@@ -245,7 +245,7 @@ defs.h:
 /usr/include/bits/types/struct_statx.h:
 ../gl/lib/stdio.h:
 /usr/include/stdio.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
 /usr/include/bits/types/__fpos_t.h:
 /usr/include/bits/types/__mbstate_t.h:
 /usr/include/bits/types/__fpos64_t.h:
@@ -255,8 +255,8 @@ defs.h:
 /usr/include/bits/types/cookie_io_functions_t.h:
 /usr/include/bits/stdio_lim.h:
 ../gl/lib/limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h:
 /usr/include/limits.h:
 /usr/include/bits/posix1_lim.h:
 /usr/include/bits/local_lim.h:

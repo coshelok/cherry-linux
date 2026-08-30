@@ -4606,7 +4606,7 @@ pkglibexecdir = ${libexecdir}/${PACKAGE}
 # that $(transform) is applied to libexec at all given that is
 # for internal package naming, not privy to $(transform).
 transform = s/ginstall/install/;/libstdbuf/!$(program_transform_name)
-ACLOCAL = ${SHELL} '/home/coshelok/the-fad-project/sources/coreutils/build-aux/missing' aclocal-1.16
+ACLOCAL = ${SHELL} '/home/coshelok/cherry/sources/coreutils/build-aux/missing' aclocal-1.16
 ALLOCA = 
 ALLOCA_H = $(top_build_prefix)lib/alloca.h
 AMTAR = $${TAR-tar}
@@ -4615,9 +4615,9 @@ APPLE_UNIVERSAL_BUILD = 0
 AR = ar
 ARFLAGS = cr
 ASSERT_H = 
-AUTOCONF = ${SHELL} '/home/coshelok/the-fad-project/sources/coreutils/build-aux/missing' autoconf
-AUTOHEADER = ${SHELL} '/home/coshelok/the-fad-project/sources/coreutils/build-aux/missing' autoheader
-AUTOMAKE = ${SHELL} '/home/coshelok/the-fad-project/sources/coreutils/build-aux/missing' automake-1.16
+AUTOCONF = ${SHELL} '/home/coshelok/cherry/sources/coreutils/build-aux/missing' autoconf
+AUTOHEADER = ${SHELL} '/home/coshelok/cherry/sources/coreutils/build-aux/missing' autoheader
+AUTOMAKE = ${SHELL} '/home/coshelok/cherry/sources/coreutils/build-aux/missing' automake-1.16
 AWK = gawk
 BITSIZEOF_PTRDIFF_T = 
 BITSIZEOF_SIG_ATOMIC_T = 
@@ -4627,7 +4627,7 @@ BITSIZEOF_WINT_T =
 BYTESWAP_H = 
 CC = gcc
 CCDEPMODE = depmode=gcc3
-CFLAGS = -std=gnu11 -fpermissive -Wno-error
+CFLAGS = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes
 CFLAG_VISIBILITY = 
 CLOCK_TIME_LIB = 
 CONFIG_INCLUDE = lib/config.h
@@ -5833,7 +5833,7 @@ HAVE_WORKING_MBRTOC32 = 1
 HAVE_WS2TCPIP_H = 0
 HAVE_XLOCALE_H = 0
 HAVE__EXIT = 1
-HELP2MAN = ${SHELL} '/home/coshelok/the-fad-project/sources/coreutils/build-aux/missing' help2man
+HELP2MAN = ${SHELL} '/home/coshelok/cherry/sources/coreutils/build-aux/missing' help2man
 HOSTENT_LIB = 
 ICONV_CONST = 
 ICONV_H = $(top_build_prefix)lib/iconv.h
@@ -5921,7 +5921,7 @@ LTLIBTHREAD =
 
 # The customization variable CHECK_NORMAL_MENU_STRUCTURE is necessary with
 # makeinfo versions ≥ 6.8.
-MAKEINFO = ${SHELL} '/home/coshelok/the-fad-project/sources/coreutils/build-aux/missing' makeinfo -c CHECK_NORMAL_MENU_STRUCTURE=1
+MAKEINFO = ${SHELL} '/home/coshelok/cherry/sources/coreutils/build-aux/missing' makeinfo -c CHECK_NORMAL_MENU_STRUCTURE=1
 MAN = 
 MBRTOWC_LIB = 
 MKDIR_P = /usr/bin/mkdir -p
@@ -6475,11 +6475,11 @@ XGETTEXT_EXTRA_OPTIONS =  --flag=error:3:c-format --flag=error_at_line:5:c-forma
 YACC = bison -o y.tab.c
 YFLAGS = 
 YIELD_LIB = 
-abs_aux_dir = /home/coshelok/the-fad-project/sources/coreutils/build-aux
-abs_builddir = /home/coshelok/the-fad-project/sources/coreutils
-abs_srcdir = /home/coshelok/the-fad-project/sources/coreutils
-abs_top_builddir = /home/coshelok/the-fad-project/sources/coreutils
-abs_top_srcdir = /home/coshelok/the-fad-project/sources/coreutils
+abs_aux_dir = /home/coshelok/cherry/sources/coreutils/build-aux
+abs_builddir = /home/coshelok/cherry/sources/coreutils
+abs_srcdir = /home/coshelok/cherry/sources/coreutils
+abs_top_builddir = /home/coshelok/cherry/sources/coreutils
+abs_top_srcdir = /home/coshelok/cherry/sources/coreutils
 ac_ct_CC = gcc
 am__include = include
 am__leading_dot = .
@@ -6535,7 +6535,7 @@ includedir_c_make = \"$(includedir)\"
 infodir = ${datarootdir}/info
 infodir_c = "/usr/share/info"
 infodir_c_make = \"$(infodir)\"
-install_sh = ${SHELL} /home/coshelok/the-fad-project/sources/coreutils/build-aux/install-sh
+install_sh = ${SHELL} /home/coshelok/cherry/sources/coreutils/build-aux/install-sh
 libdir = ${exec_prefix}/lib
 libdir_c = "/usr/lib"
 libdir_c_make = \"$(libdir)\"

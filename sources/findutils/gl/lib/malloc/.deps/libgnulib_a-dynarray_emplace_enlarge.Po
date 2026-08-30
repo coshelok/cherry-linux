@@ -1,7 +1,7 @@
 malloc/libgnulib_a-dynarray_emplace_enlarge.o: \
  malloc/dynarray_emplace_enlarge.c /usr/include/stdc-predef.h \
  libc-config.h ../../config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -11,11 +11,11 @@ malloc/libgnulib_a-dynarray_emplace_enlarge.o: \
  /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
  /usr/include/asm-generic/errno-base.h /usr/include/bits/types/error_t.h \
  dynarray.h malloc/dynarray.h stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h string.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h string.h \
  /usr/include/string.h /usr/include/bits/libc-header-start.h \
  /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
  strings.h /usr/include/strings.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h stdlib.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h stdlib.h \
  /usr/include/stdlib.h /usr/include/bits/waitflags.h \
  /usr/include/bits/waitstatus.h /usr/include/bits/floatn.h \
  /usr/include/bits/floatn-common.h sys/types.h /usr/include/sys/types.h \
@@ -38,7 +38,7 @@ malloc/libgnulib_a-dynarray_emplace_enlarge.o: \
 /usr/include/stdc-predef.h:
 libc-config.h:
 ../../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -58,7 +58,7 @@ libc-config.h:
 dynarray.h:
 malloc/dynarray.h:
 stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 string.h:
 /usr/include/string.h:
 /usr/include/bits/libc-header-start.h:
@@ -66,7 +66,7 @@ string.h:
 /usr/include/bits/types/__locale_t.h:
 strings.h:
 /usr/include/strings.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h:
 stdlib.h:
 /usr/include/stdlib.h:
 /usr/include/bits/waitflags.h:

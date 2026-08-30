@@ -15,7 +15,7 @@ log "Creating FHS directory structure in $TARGET_DIR..."
 rm -rf "$TARGET_DIR"
 mkdir -p "$TARGET_DIR"/{bin,sbin,lib,lib64,etc,proc,sys,dev,root,home,tmp,mnt,run,srv,opt,cdrom}
 mkdir -p "$TARGET_DIR"/usr/{bin,sbin,lib,include,share}
-mkdir -p "$TARGET_DIR"/var/{log,run,tmp,cache,lib/fadev/manifests}
+mkdir -p "$TARGET_DIR"/var/{log,run,tmp,cache,lib/chepm/manifests}
 
 ln -sf usr/bin  "$TARGET_DIR/bin"
 ln -sf usr/sbin "$TARGET_DIR/sbin"
@@ -37,7 +37,7 @@ PKGS=(
     "gawk|https://ftp.gnu.org/gnu/gawk/gawk-5.3.0.tar.xz||"
     "findutils|https://ftp.gnu.org/gnu/findutils/findutils-4.10.0.tar.xz||"
     "diffutils|https://ftp.gnu.org/gnu/diffutils/diffutils-3.11.tar.xz||"
-    "tar|https://ftp.gnu.org/gnu/tar/tar-1.35.tar.xz||"
+    "tar|https://ftp.gnu.org/gnu/tar/tar-1.35.tar.xz|--without-xattrs --without-posix-acls|"
     "gzip|https://ftp.gnu.org/gnu/gzip/gzip-1.13.tar.xz||"
     "bzip2|https://sourceware.org/ftp/bzip2/bzip2-1.0.8.tar.gz|--prefix=/usr|"
     "xz|https://github.com/tukaani-project/xz/releases/download/v5.6.3/xz-5.6.3.tar.xz||"
@@ -142,29 +142,29 @@ done < <(find "$TARGET_DIR"/usr/bin "$TARGET_DIR"/usr/sbin -type f -executable 2
 ld_linux=$(ls /lib64/ld-linux-x86-64.so.2 2>/dev/null || ls /lib/ld-linux*.so* 2>/dev/null || true)
 [ -n "$ld_linux" ] && cp -v "$ld_linux" "$TARGET_DIR/usr/lib/"
 
-# ========== FAD Utilities ==========
-log "Installing custom FAD utilities..."
+# ========== Cherry Utilities ==========
+log "Installing custom Cherry utilities..."
 
-if [ -f "$PROJECT_DIR/fad_utils/fadev" ]; then
-    cp -v "$PROJECT_DIR/fad_utils/fadev" "$TARGET_DIR/bin/fadev"
-    chmod +x "$TARGET_DIR/bin/fadev"
+if [ -f "$PROJECT_DIR/cherry_utils/chepm" ]; then
+    cp -v "$PROJECT_DIR/cherry_utils/chepm" "$TARGET_DIR/bin/chepm"
+    chmod +x "$TARGET_DIR/bin/chepm"
 fi
 
-if [ -f "$PROJECT_DIR/fad_utils/fadfetch" ]; then
-    cp -v "$PROJECT_DIR/fad_utils/fadfetch" "$TARGET_DIR/bin/fadfetch"
-    chmod +x "$TARGET_DIR/bin/fadfetch"
+if [ -f "$PROJECT_DIR/cherry_utils/cherryfetch" ]; then
+    cp -v "$PROJECT_DIR/cherry_utils/cherryfetch" "$TARGET_DIR/bin/cherryfetch"
+    chmod +x "$TARGET_DIR/bin/cherryfetch"
 fi
 
 # ========== System Config ==========
 log "Generating system configuration..."
 cat > "$TARGET_DIR/etc/passwd" <<EOF
 root:x:0:0:root:/root:/bin/sh
-fad:x:1000:1000:User,,,:/home/fad:/bin/sh
+cherry:x:1000:1000:User,,,:/home/cherry:/bin/sh
 EOF
 
 cat > "$TARGET_DIR/etc/shadow" <<EOF
 root::19701:0:99999:7:::
-fad::19701:0:99999:7:::
+cherry::19701:0:99999:7:::
 EOF
 
 cat > "$TARGET_DIR/etc/fstab" <<EOF
@@ -172,7 +172,7 @@ tmpfs    /run      tmpfs       defaults        0  0
 tmpfs    /tmp      tmpfs       defaults        0  0
 EOF
 
-echo "fadlinux" > "$TARGET_DIR/etc/hostname"
+echo "cherrylinux" > "$TARGET_DIR/etc/hostname"
 echo "/usr/lib" > "$TARGET_DIR/etc/ld.so.conf"
 
 log "Rootfs build complete! Target: $TARGET_DIR"

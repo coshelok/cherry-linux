@@ -1,12 +1,12 @@
 libgreputils_a-trim.o: trim.c /usr/include/stdc-predef.h ../config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h trim.h stdlib.h /usr/include/stdlib.h \
  /usr/include/bits/libc-header-start.h stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
  /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
  /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
@@ -28,18 +28,18 @@ libgreputils_a-trim.o: trim.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/types/once_flag.h /usr/include/bits/stdlib-float.h \
  ctype.h /usr/include/ctype.h string.h /usr/include/string.h \
  /usr/include/strings.h mbchar.h wchar.h /usr/include/wchar.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
  /usr/include/bits/wchar.h /usr/include/bits/types/wint_t.h \
  /usr/include/bits/types/mbstate_t.h \
  /usr/include/bits/types/__mbstate_t.h /usr/include/bits/types/__FILE.h \
  /usr/include/bits/types/FILE.h wctype.h /usr/include/wctype.h \
  /usr/include/bits/wctype-wchar.h mbiter.h xalloc.h idx.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/stdint-uintn.h \
  /usr/include/bits/stdint-least.h
 /usr/include/stdc-predef.h:
 ../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -54,7 +54,7 @@ stdlib.h:
 /usr/include/stdlib.h:
 /usr/include/bits/libc-header-start.h:
 stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/waitflags.h:
 /usr/include/bits/waitstatus.h:
 /usr/include/bits/floatn.h:
@@ -99,7 +99,7 @@ string.h:
 mbchar.h:
 wchar.h:
 /usr/include/wchar.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
 /usr/include/bits/wchar.h:
 /usr/include/bits/types/wint_t.h:
 /usr/include/bits/types/mbstate_t.h:
@@ -112,7 +112,7 @@ wctype.h:
 mbiter.h:
 xalloc.h:
 idx.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/stdint-uintn.h:
 /usr/include/bits/stdint-least.h:

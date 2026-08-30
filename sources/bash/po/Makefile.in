@@ -19,7 +19,7 @@ top_srcdir = ..
 
 
 topdir = ..
-BUILD_DIR = /home/coshelok/the-fad-project/sources/bash
+BUILD_DIR = /home/coshelok/cherry/sources/bash
 
 prefix = /usr
 exec_prefix = ${prefix}

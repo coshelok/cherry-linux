@@ -58,7 +58,7 @@ man3dir = $(mandir)/$(manpfx)3
 
 INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 644
-BUILD_DIR = /home/coshelok/the-fad-project/sources/bash
+BUILD_DIR = /home/coshelok/cherry/sources/bash
 
 SUPPORT_SRCDIR = $(topdir)/support
 

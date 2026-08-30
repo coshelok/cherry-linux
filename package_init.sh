@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_FILE="$PROJECT_DIR/boot/init.cpio.gz"
-INITRAMFS_STAGE="/tmp/fadlinux_initramfs_staging"
+INITRAMFS_STAGE="/tmp/cherrylinux_initramfs_staging"
 
 echo "=========================================="
 echo "   Compiling C-Init & Packaging Initramfs "

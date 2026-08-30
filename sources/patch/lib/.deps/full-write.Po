@@ -1,5 +1,5 @@
 full-write.o: full-write.c /usr/include/stdc-predef.h ../config.h \
- full-write.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ full-write.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/errno.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -11,7 +11,7 @@ full-write.o: full-write.c /usr/include/stdc-predef.h ../config.h \
 /usr/include/stdc-predef.h:
 ../config.h:
 full-write.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/errno.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:

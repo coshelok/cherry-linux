@@ -1,5 +1,5 @@
 verror.o: verror.c /usr/include/stdc-predef.h ../config.h verror.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h error.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h error.h \
  xvasprintf.h /usr/include/errno.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -9,7 +9,7 @@ verror.o: verror.c /usr/include/stdc-predef.h ../config.h verror.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/bits/types/error_t.h stdlib.h /usr/include/stdlib.h \
  /usr/include/bits/libc-header-start.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
  /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
  /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
@@ -32,7 +32,7 @@ verror.o: verror.c /usr/include/stdc-predef.h ../config.h verror.h \
 /usr/include/stdc-predef.h:
 ../config.h:
 verror.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
 error.h:
 xvasprintf.h:
 /usr/include/errno.h:
@@ -53,7 +53,7 @@ xvasprintf.h:
 stdlib.h:
 /usr/include/stdlib.h:
 /usr/include/bits/libc-header-start.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/waitflags.h:
 /usr/include/bits/waitstatus.h:
 /usr/include/bits/floatn.h:

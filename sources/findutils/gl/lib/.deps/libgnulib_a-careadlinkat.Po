@@ -1,5 +1,5 @@
 libgnulib_a-careadlinkat.o: careadlinkat.c /usr/include/stdc-predef.h \
- ../../config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ ../../config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -9,7 +9,7 @@ libgnulib_a-careadlinkat.o: careadlinkat.c /usr/include/stdc-predef.h \
  /usr/include/bits/typesizes.h /usr/include/bits/time64.h \
  /usr/include/bits/types/clock_t.h /usr/include/bits/types/clockid_t.h \
  /usr/include/bits/types/time_t.h /usr/include/bits/types/timer_t.h \
- stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/stdint-intn.h /usr/include/endian.h \
  /usr/include/bits/endian.h /usr/include/bits/endianness.h \
  /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
@@ -35,12 +35,12 @@ libgnulib_a-careadlinkat.o: careadlinkat.c /usr/include/stdc-predef.h \
  /usr/include/bits/environments.h /usr/include/bits/confname.h \
  /usr/include/bits/getopt_posix.h /usr/include/bits/getopt_core.h \
  /usr/include/bits/unistd_ext.h /usr/include/linux/close_range.h idx.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
  /usr/include/bits/wchar.h /usr/include/bits/stdint-uintn.h \
  /usr/include/bits/stdint-least.h minmax.h /usr/include/sys/param.h \
- limits.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h \
+ limits.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h \
  /usr/include/limits.h /usr/include/bits/posix1_lim.h \
  /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
  /usr/include/bits/pthread_stack_min-dynamic.h \
@@ -68,7 +68,7 @@ libgnulib_a-careadlinkat.o: careadlinkat.c /usr/include/stdc-predef.h \
  allocator.h
 /usr/include/stdc-predef.h:
 ../../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -90,7 +90,7 @@ sys/types.h:
 /usr/include/bits/types/time_t.h:
 /usr/include/bits/types/timer_t.h:
 stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/stdint-intn.h:
 /usr/include/endian.h:
 /usr/include/bits/endian.h:
@@ -140,7 +140,7 @@ unistd.h:
 /usr/include/bits/unistd_ext.h:
 /usr/include/linux/close_range.h:
 idx.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/libc-header-start.h:
 /usr/include/bits/wchar.h:
@@ -149,8 +149,8 @@ idx.h:
 minmax.h:
 /usr/include/sys/param.h:
 limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/limits.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/syslimits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h:
 /usr/include/limits.h:
 /usr/include/bits/posix1_lim.h:
 /usr/include/bits/local_lim.h:

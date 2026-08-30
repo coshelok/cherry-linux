@@ -52,13 +52,13 @@ DESTDIR =
 
 INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 644
-BUILD_DIR = /home/coshelok/the-fad-project/sources/bash
+BUILD_DIR = /home/coshelok/cherry/sources/bash
 
 LIBBUILD = ${BUILD_DIR}/lib
 
 PROFILE_FLAGS = 
-CFLAGS = -std=gnu11 -fpermissive -Wno-error
-CFLAGS_FOR_BUILD = -std=gnu11 -fpermissive -Wno-error 
+CFLAGS = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes
+CFLAGS_FOR_BUILD = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes 
 STYLE_CFLAGS = 
 CPPFLAGS = 
 CPPFLAGS_FOR_BUILD = 

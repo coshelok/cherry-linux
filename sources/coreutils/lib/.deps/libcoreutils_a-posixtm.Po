@@ -1,11 +1,11 @@
 lib/libcoreutils_a-posixtm.o: lib/posixtm.c /usr/include/stdc-predef.h \
- lib/config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ lib/config.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h lib/posixtm.h lib/time.h /usr/include/time.h \
- lib/stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ lib/stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/time.h /usr/include/bits/types.h \
  /usr/include/bits/typesizes.h /usr/include/bits/time64.h \
  /usr/include/bits/timex.h /usr/include/bits/types/struct_timeval.h \
@@ -17,15 +17,15 @@ lib/libcoreutils_a-posixtm.o: lib/posixtm.c /usr/include/stdc-predef.h \
  /usr/include/bits/types/struct_itimerspec.h \
  /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
  lib/c-ctype.h lib/idx.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
  /usr/include/bits/wchar.h /usr/include/bits/stdint-intn.h \
  /usr/include/bits/stdint-uintn.h /usr/include/bits/stdint-least.h \
- lib/verify.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h \
+ lib/verify.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h \
  lib/string.h /usr/include/string.h /usr/include/strings.h
 /usr/include/stdc-predef.h:
 lib/config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -39,7 +39,7 @@ lib/posixtm.h:
 lib/time.h:
 /usr/include/time.h:
 lib/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/time.h:
 /usr/include/bits/types.h:
 /usr/include/bits/typesizes.h:
@@ -59,7 +59,7 @@ lib/stddef.h:
 /usr/include/bits/types/__locale_t.h:
 lib/c-ctype.h:
 lib/idx.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/libc-header-start.h:
 /usr/include/bits/wchar.h:
@@ -67,7 +67,7 @@ lib/idx.h:
 /usr/include/bits/stdint-uintn.h:
 /usr/include/bits/stdint-least.h:
 lib/verify.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h:
 lib/string.h:
 /usr/include/string.h:
 /usr/include/strings.h:

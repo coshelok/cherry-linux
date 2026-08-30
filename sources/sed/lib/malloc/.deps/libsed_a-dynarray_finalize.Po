@@ -1,7 +1,7 @@
 lib/malloc/libsed_a-dynarray_finalize.o: lib/malloc/dynarray_finalize.c \
  /usr/include/stdc-predef.h lib/libc-config.h config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdalign.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdalign.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -11,7 +11,7 @@ lib/malloc/libsed_a-dynarray_finalize.o: lib/malloc/dynarray_finalize.c \
  /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
  /usr/include/asm-generic/errno-base.h /usr/include/bits/types/error_t.h \
  lib/dynarray.h lib/malloc/dynarray.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h lib/string.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h lib/string.h \
  /usr/include/string.h /usr/include/bits/libc-header-start.h \
  /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
  /usr/include/strings.h lib/stdlib.h /usr/include/stdlib.h \
@@ -36,8 +36,8 @@ lib/malloc/libsed_a-dynarray_finalize.o: lib/malloc/dynarray_finalize.c \
 /usr/include/stdc-predef.h:
 lib/libc-config.h:
 config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdalign.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdalign.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -56,7 +56,7 @@ config.h:
 /usr/include/bits/types/error_t.h:
 lib/dynarray.h:
 lib/malloc/dynarray.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 lib/string.h:
 /usr/include/string.h:
 /usr/include/bits/libc-header-start.h:

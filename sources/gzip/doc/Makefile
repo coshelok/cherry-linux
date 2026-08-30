@@ -295,7 +295,7 @@ am__DIST_COMMON = $(gzip_TEXINFOS) $(srcdir)/Makefile.in \
 	$(top_srcdir)/build-aux/mdate-sh \
 	$(top_srcdir)/build-aux/texinfo.tex
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} '/home/coshelok/the-fad-project/sources/gzip/build-aux/missing' aclocal-1.16
+ACLOCAL = ${SHELL} '/home/coshelok/cherry/sources/gzip/build-aux/missing' aclocal-1.16
 ALLOCA = 
 ALLOCA_H = alloca.h
 AMTAR = $${TAR-tar}
@@ -308,9 +308,9 @@ ASCPPPOST = sed '/^ *\#/d; s,//.*,,; s/% /%/g; s/\. /./g'
 ASFLAGS_config = 
 ASM_SYMBOL_PREFIX = ""
 ASSERT_H = 
-AUTOCONF = ${SHELL} '/home/coshelok/the-fad-project/sources/gzip/build-aux/missing' autoconf
-AUTOHEADER = ${SHELL} '/home/coshelok/the-fad-project/sources/gzip/build-aux/missing' autoheader
-AUTOMAKE = ${SHELL} '/home/coshelok/the-fad-project/sources/gzip/build-aux/missing' automake-1.16
+AUTOCONF = ${SHELL} '/home/coshelok/cherry/sources/gzip/build-aux/missing' autoconf
+AUTOHEADER = ${SHELL} '/home/coshelok/cherry/sources/gzip/build-aux/missing' autoheader
+AUTOMAKE = ${SHELL} '/home/coshelok/cherry/sources/gzip/build-aux/missing' automake-1.16
 AWK = gawk
 BITSIZEOF_PTRDIFF_T = 
 BITSIZEOF_SIG_ATOMIC_T = 
@@ -1182,7 +1182,7 @@ LTLIBOBJS =
 
 # The customization variable CHECK_NORMAL_MENU_STRUCTURE is necessary with
 # makeinfo versions ≥ 6.8.
-MAKEINFO = ${SHELL} '/home/coshelok/the-fad-project/sources/gzip/build-aux/missing' makeinfo -c CHECK_NORMAL_MENU_STRUCTURE=1
+MAKEINFO = ${SHELL} '/home/coshelok/cherry/sources/gzip/build-aux/missing' makeinfo -c CHECK_NORMAL_MENU_STRUCTURE=1
 MKDIR_P = /usr/bin/mkdir -p
 NEXT_ASSERT_H = 
 NEXT_AS_FIRST_DIRECTIVE_ASSERT_H = 
@@ -1562,10 +1562,10 @@ WINDOWS_STAT_TIMESPEC = 0
 WINT_T_SUFFIX = 
 ZDIFF_TRANSFORMED = zdiff
 ZGREP_TRANSFORMED = zgrep
-abs_builddir = /home/coshelok/the-fad-project/sources/gzip/doc
-abs_srcdir = /home/coshelok/the-fad-project/sources/gzip/doc
-abs_top_builddir = /home/coshelok/the-fad-project/sources/gzip
-abs_top_srcdir = /home/coshelok/the-fad-project/sources/gzip
+abs_builddir = /home/coshelok/cherry/sources/gzip/doc
+abs_srcdir = /home/coshelok/cherry/sources/gzip/doc
+abs_top_builddir = /home/coshelok/cherry/sources/gzip
+abs_top_srcdir = /home/coshelok/cherry/sources/gzip
 ac_ct_CC = gcc
 am__include = include
 am__leading_dot = .
@@ -1601,7 +1601,7 @@ host_vendor = pc
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/coshelok/the-fad-project/sources/gzip/build-aux/install-sh
+install_sh = ${SHELL} /home/coshelok/cherry/sources/gzip/build-aux/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale

@@ -22,7 +22,7 @@
 srcdir = .
 
 topdir = ../..
-BUILD_DIR = /home/coshelok/the-fad-project/sources/bash
+BUILD_DIR = /home/coshelok/cherry/sources/bash
 
 libdir = ${exec_prefix}/lib
 
@@ -40,7 +40,7 @@ MV = mv
 
 SHELL = /bin/sh
 
-CFLAGS = -std=gnu11 -fpermissive -Wno-error
+CFLAGS = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes
 CPPFLAGS = 
 LDFLAGS = 
 

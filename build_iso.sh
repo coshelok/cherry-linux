@@ -2,10 +2,10 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUTPUT_ISO="$PROJECT_DIR/../fadlinux-v0.3.iso"
+OUTPUT_ISO="$PROJECT_DIR/../cherrylinux-v0.4.iso"
 
 echo "=========================================="
-echo "      Building FAD Linux Bootable ISO     "
+echo "    Building Cherry Linux Bootable ISO    "
 echo "=========================================="
 
 HOST_TOOLS_DIR="$PROJECT_DIR/.host_tools"
@@ -52,13 +52,13 @@ cd "$PROJECT_DIR/rootfs/bin"
 done
 cd "$PROJECT_DIR"
 
-echo "[INFO] Preparing fadfetch..."
-if [ -f "$PROJECT_DIR/fad_utils/fadfetch" ]; then
-    cp "$PROJECT_DIR/fad_utils/fadfetch" "$PROJECT_DIR/rootfs/bin/fadfetch"
-    chmod +x "$PROJECT_DIR/rootfs/bin/fadfetch"
-    echo "[SUCCESS] fadfetch added to rootfs/bin/fadfetch"
+echo "[INFO] Preparing cherryfetch..."
+if [ -f "$PROJECT_DIR/cherry_utils/cherryfetch" ]; then
+    cp "$PROJECT_DIR/cherry_utils/cherryfetch" "$PROJECT_DIR/rootfs/bin/cherryfetch"
+    chmod +x "$PROJECT_DIR/rootfs/bin/cherryfetch"
+    echo "[SUCCESS] cherryfetch added to rootfs/bin/cherryfetch"
 else
-    echo "[WARNING] fadfetch not found, skipping..."
+    echo "[WARNING] cherryfetch not found, skipping..."
 fi
 
 echo "[INFO] Rebuilding rootfs.sfs image (SquashFS)..."
@@ -72,7 +72,7 @@ mkdir -p "$PROJECT_DIR/boot"
 (cd "$PROJECT_DIR" && echo "init" | cpio -o -H newc) | gzip -9 > "$PROJECT_DIR/boot/init.cpio.gz"
 rm -f "$PROJECT_DIR/init"
 
-if [ ! -f "$PROJECT_DIR/boot/bzImage" ]; then
+if [ ! -f "$PROJECT_DIR/kernel/linux-7.0.10/arch/x86/boot/bzImage" ]; then
     echo "[ERROR] Missing bzImage!" && exit 1
 fi
 
@@ -81,8 +81,8 @@ STAGING_DIR="$PROJECT_DIR/iso_staging"
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR/boot"
 
-cp "$PROJECT_DIR/boot/bzImage" "$STAGING_DIR/boot/"
-cp "$PROJECT_DIR/boot/init.cpio.gz" "$STAGING_DIR/boot/"
+cp "$PROJECT_DIR/kernel/linux-7.0.10/arch/x86/boot/bzImage" "$STAGING_DIR/boot/"
+cp "$PROJECT_DIR/init.cpio.gz" "$STAGING_DIR/boot/"
 cp "$PROJECT_DIR/rootfs.sfs" "$STAGING_DIR/boot/"
 
 echo "[INFO] Copying Limine bootloaders..."
@@ -93,7 +93,7 @@ cp "$HOST_TOOLS_DIR/limine/limine-uefi-cd.bin" "$STAGING_DIR/"
 cat << 'EOF' > "$STAGING_DIR/limine.conf"
 timeout: 3
 
-/FAD Linux (Текстовая консоль)
+/Cherry Linux (Текстовая консоль)
     protocol: linux
     kernel_path: boot():/boot/bzImage
     module_path: boot():/boot/init.cpio.gz

@@ -30,7 +30,7 @@
 topdir = ..
 srcdir = .
 
-BUILD_DIR = /home/coshelok/the-fad-project/sources/bash
+BUILD_DIR = /home/coshelok/cherry/sources/bash
 
 RM	= rm -f
 SHELL	= /bin/sh
@@ -44,9 +44,9 @@ EXEEXT =
 #
 PROFILE_FLAGS = 
 
-CFLAGS = -std=gnu11 -fpermissive -Wno-error
-CFLAGS_FOR_BUILD = -std=gnu11 -fpermissive -Wno-error
-BASE_CFLAGS_FOR_BUILD = -std=gnu11 -fpermissive -Wno-error
+CFLAGS = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes
+CFLAGS_FOR_BUILD = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes
+BASE_CFLAGS_FOR_BUILD = -std=gnu11 -fpermissive -Wno-error -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=old-style-definition -Wno-error=return-type -Wno-implicit-int -Wno-error=strict-prototypes
 CPPFLAGS = 
 CPPFLAGS_FOR_BUILD = 
 LOCAL_CFLAGS = 

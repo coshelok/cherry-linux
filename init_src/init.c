@@ -42,7 +42,7 @@ static int make_dev(const char *path, mode_t mode, int major, int minor) {
 }
 
 int main() {
-    log_info("Booting FAD Linux...");
+    log_info("Booting Cherry Linux...");
 
     const char *dirs[] = {"/proc", "/sys", "/dev", "/dev/pts", "/run", "/mnt", "/bin", "/etc", "/home", "/root", "/tmp", "/var", "/cdrom"};
     for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
@@ -156,7 +156,7 @@ int main() {
         if (img_fd >= 0) close(img_fd);
     }
 
-    sethostname("fadlinux", strlen("fadlinux"));
+    sethostname("cherrylinux", strlen("cherrylinux"));
     setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin", 1);
     setenv("HOME", "/root", 1);
     setenv("USER", "root", 1);
@@ -164,7 +164,7 @@ int main() {
 
     log_info("System ready.");
 
-    printf("\n  Welcome to FAD Linux\n");
+    printf("\n  Welcome to Cherry Linux\n");
     printf("  Type 'help' for available commands.\n\n");
 
     static char env_store[64][256];
@@ -179,7 +179,7 @@ int main() {
 
         if (getcwd(cwd, sizeof(cwd)) == NULL) snprintf(cwd, sizeof(cwd), "?");
 
-        printf("fad:%s# ", cwd);
+        printf("cherry:%s# ", cwd);
         fflush(stdout);
         if (fgets(line, sizeof(line), stdin) == NULL) {
             printf("\nUse 'poweroff' command to shutdown the system.\n");
@@ -249,7 +249,7 @@ int main() {
             pid_t pid = fork();
             if (pid == 0) {
                 execvp(args[0], args);
-                fprintf(stderr, "fad-shell: command not found: %s\n", args[0]);
+                fprintf(stderr, "cherry-shell: command not found: %s\n", args[0]);
                 _exit(127);
             } else if (pid > 0) {
                 int status;

@@ -1,5 +1,5 @@
 qmark.o: qmark.c /usr/include/stdc-predef.h ../config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
@@ -10,8 +10,7 @@ qmark.o: qmark.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/endianness.h /usr/include/bits/types/locale_t.h \
  /usr/include/bits/types/__locale_t.h ../gl/lib/stdlib.h \
  /usr/include/stdlib.h /usr/include/bits/libc-header-start.h \
- ../gl/lib/stddef.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ ../gl/lib/stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
  /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
  ../gl/lib/sys/types.h /usr/include/sys/types.h \
@@ -30,7 +29,7 @@ qmark.o: qmark.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/types/once_flag.h /usr/include/bits/stdlib-float.h \
  ../gl/lib/string.h /usr/include/string.h ../gl/lib/strings.h \
  /usr/include/strings.h ../gl/lib/wchar.h /usr/include/wchar.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h \
  /usr/include/bits/wchar.h /usr/include/bits/types/wint_t.h \
  /usr/include/bits/types/mbstate_t.h \
  /usr/include/bits/types/__mbstate_t.h /usr/include/bits/types/__FILE.h \
@@ -42,7 +41,7 @@ qmark.o: qmark.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/bits/stdio_lim.h ../gl/lib/quote.h ../gl/lib/quotearg.h
 /usr/include/stdc-predef.h:
 ../config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -65,7 +64,7 @@ qmark.o: qmark.c /usr/include/stdc-predef.h ../config.h \
 /usr/include/stdlib.h:
 /usr/include/bits/libc-header-start.h:
 ../gl/lib/stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/waitflags.h:
 /usr/include/bits/waitstatus.h:
 /usr/include/bits/floatn.h:
@@ -101,7 +100,7 @@ qmark.o: qmark.c /usr/include/stdc-predef.h ../config.h \
 /usr/include/strings.h:
 ../gl/lib/wchar.h:
 /usr/include/wchar.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdarg.h:
 /usr/include/bits/wchar.h:
 /usr/include/bits/types/wint_t.h:
 /usr/include/bits/types/mbstate_t.h:

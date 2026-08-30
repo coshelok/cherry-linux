@@ -1,11 +1,11 @@
 libgzip_a-utimens.o: utimens.c /usr/include/stdc-predef.h config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h \
  /usr/include/assert.h /usr/include/features.h \
  /usr/include/features-time64.h /usr/include/bits/wordsize.h \
  /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h utimens.h time.h /usr/include/time.h \
- stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h \
+ stddef.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h \
  /usr/include/bits/time.h /usr/include/bits/types.h \
  /usr/include/bits/typesizes.h /usr/include/bits/time64.h \
  /usr/include/bits/timex.h /usr/include/bits/types/struct_timeval.h \
@@ -50,11 +50,11 @@ libgzip_a-utimens.o: utimens.c /usr/include/stdc-predef.h config.h \
  /usr/include/bits/confname.h /usr/include/bits/getopt_posix.h \
  /usr/include/bits/getopt_core.h /usr/include/bits/unistd_ext.h \
  /usr/include/linux/close_range.h utime.h /usr/include/utime.h \
- stat-time.h /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h \
+ stat-time.h /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h \
  timespec.h arg-nonnull.h
 /usr/include/stdc-predef.h:
 config.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdbool.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdbool.h:
 /usr/include/assert.h:
 /usr/include/features.h:
 /usr/include/features-time64.h:
@@ -68,7 +68,7 @@ utimens.h:
 time.h:
 /usr/include/time.h:
 stddef.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 /usr/include/bits/time.h:
 /usr/include/bits/types.h:
 /usr/include/bits/typesizes.h:
@@ -156,6 +156,6 @@ unistd.h:
 utime.h:
 /usr/include/utime.h:
 stat-time.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdckdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdckdint.h:
 timespec.h:
 arg-nonnull.h:

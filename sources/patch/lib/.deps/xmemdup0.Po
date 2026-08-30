@@ -1,6 +1,6 @@
 xmemdup0.o: xmemdup0.c /usr/include/stdc-predef.h ../config.h xmemdup0.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h xalloc.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h xalloc.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/features-time64.h \
  /usr/include/bits/wordsize.h /usr/include/bits/timesize.h \
@@ -15,9 +15,9 @@ xmemdup0.o: xmemdup0.c /usr/include/stdc-predef.h ../config.h xmemdup0.h \
 /usr/include/stdc-predef.h:
 ../config.h:
 xmemdup0.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stddef.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stddef.h:
 xalloc.h:
-/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:
+/usr/lib/gcc/x86_64-pc-linux-gnu/16/include/stdint.h:
 /usr/include/stdint.h:
 /usr/include/bits/libc-header-start.h:
 /usr/include/features.h:
