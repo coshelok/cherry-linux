@@ -1,6 +1,19 @@
-\*\*/target/ sources/ rootfs/
+\*\*/target/
 
-\*.iso \*.cpio.gz \*.bak \*.sfs vmlinuz init
+sources/
+
+rootfs/
+
+\*.iso
+
+\*.cpio.gz
+
+\*.bak
+
+\*.sfs
+
+vmlinuz
+
+init
 
 !.cargo/config.toml
-
