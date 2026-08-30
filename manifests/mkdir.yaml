@@ -1,5 +1,0 @@
-name: mkdir
-version: 0.1.0
-url: /home/coshelok/Downloads/pyproj/fuckassdistro/rust_utils/mkdir
-build_system: cargo
-install_args: bin

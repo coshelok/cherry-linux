@@ -1,5 +1,0 @@
-name: pwd
-version: 0.1.0
-url: /home/coshelok/Downloads/pyproj/fuckassdistro/rust_utils/pwd
-build_system: cargo
-install_args: bin

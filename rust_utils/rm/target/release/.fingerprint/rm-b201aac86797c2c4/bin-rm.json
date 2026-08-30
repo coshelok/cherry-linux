@@ -1,1 +1,0 @@
-{"rustc":16696009966390864400,"features":"[]","declared_features":"[]","target":2111001964750000409,"profile":2040997289075261528,"path":4942398508502643691,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/rm-b201aac86797c2c4/dep-bin-rm","checksum":false}}],"rustflags":["-C","target-feature=+crt-static"],"config":8247474407144887393,"compile_kind":0}
