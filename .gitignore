@@ -1,16 +1,6 @@
-# Игнорируем тяжелые папки с исходниками ядра и инструментами сборки
-kernel/
-build_tool/
-toolchain/
-boot_staging/
-**/target/
+kernel/ build\_tool/ toolchain/ boot\_staging/ \*\*/target/ sources/
 
-# Игнорируем бинарные слепки дисков и ядра
-*.iso
-*.cpio.gz
-*.bak
-vmlinuz
-init
+\*.iso \*.cpio.gz \*.bak \*.sfs vmlinuz init
 
-# Исключение: Cargo-конфиг для статической сборки Rust ОБЯЗАН быть в Git
 !.cargo/config.toml
+

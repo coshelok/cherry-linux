@@ -2,7 +2,7 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUTPUT_FILE="$PROJECT_DIR/boot/init.cpio.gz"
+OUTPUT_FILE="$PROJECT_DIR/init.cpio.gz"
 INITRAMFS_STAGE="/tmp/cherrylinux_initramfs_staging"
 
 echo "=========================================="
