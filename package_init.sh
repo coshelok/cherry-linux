@@ -11,9 +11,7 @@ echo "=========================================="
 
 rm -rf "$INITRAMFS_STAGE"
 mkdir -p "$INITRAMFS_STAGE"
-mkdir -p "$PROJECT_DIR/boot"
 
-# find C
 INIT_SOURCE="$PROJECT_DIR/init_src/init.c"
 if [ -f "$PROJECT_DIR/init_src/init.c" ]; then
     INIT_SOURCE="$PROJECT_DIR/init_src/init.c"

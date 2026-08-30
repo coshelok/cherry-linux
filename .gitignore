@@ -1,4 +1,4 @@
-kernel/ build\_tool/ toolchain/ boot\_staging/ \*\*/target/ sources/
+kernel/ \*\*/target/ sources/
 
 \*.iso \*.cpio.gz \*.bak \*.sfs vmlinuz init
 
