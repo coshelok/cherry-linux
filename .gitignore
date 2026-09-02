@@ -1,0 +1,10 @@
+sources/
+
+rootfs/
+
+init.cpio.gz
+
+rootfs.sfs
+
+!.cargo/config.toml
+
