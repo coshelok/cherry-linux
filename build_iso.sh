@@ -68,8 +68,7 @@ mksquashfs "$PROJECT_DIR/rootfs" "$PROJECT_DIR/rootfs.sfs"
 echo "[INFO] Compiling custom init.c and updating initramfs..."
 gcc -static "$PROJECT_DIR/init_src/init.c" -o "$PROJECT_DIR/init"
 
-mkdir -p "$PROJECT_DIR/boot"
-(cd "$PROJECT_DIR" && echo "init" | cpio -o -H newc) | gzip -9 > "$PROJECT_DIR/boot/init.cpio.gz"
+(cd "$PROJECT_DIR" && echo "init" | cpio -o -H newc) | gzip -9 > "$PROJECT_DIR/init.cpio.gz"
 rm -f "$PROJECT_DIR/init"
 
 if [ ! -f "$PROJECT_DIR/kernel/linux-7.0.10/arch/x86/boot/bzImage" ]; then
@@ -93,7 +92,7 @@ cp "$HOST_TOOLS_DIR/limine/limine-uefi-cd.bin" "$STAGING_DIR/"
 cat << 'EOF' > "$STAGING_DIR/limine.conf"
 timeout: 3
 
-/Cherry Linux (Текстовая консоль)
+/Cherry Linux
     protocol: linux
     kernel_path: boot():/boot/bzImage
     module_path: boot():/boot/init.cpio.gz
