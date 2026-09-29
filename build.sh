@@ -9,11 +9,13 @@ HOST_TOOLS_DIR="${HOST_TOOLS_DIR:-$BUILD_DIR/host-tools}"
 INITRAMFS="${INITRAMFS:-$BUILD_DIR/init.cpio.gz}"
 ROOTFS_SFS="${ROOTFS_SFS:-$BUILD_DIR/rootfs.sfs}"
 STAGING_DIR="${STAGING_DIR:-$BUILD_DIR/iso-staging}"
-OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v0.4.iso}"
+OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v0.5.1.iso}"
 
 INIT_SOURCE="$PROJECT_DIR/src/init.c"
 ROOTFS_SCRIPT="$PROJECT_DIR/rootfs.sh"
-KERNEL_IMAGE="$PROJECT_DIR/kernel/linux-7.0.10/arch/x86/boot/bzImage"
+KERNEL_DIR="$PROJECT_DIR/kernel/linux-7.0.10"
+KERNEL_CONFIG="$PROJECT_DIR/cherry.config"
+KERNEL_IMAGE="$KERNEL_DIR/arch/x86/boot/bzImage"
 LIMINE_DIR="$PROJECT_DIR/tools/limine-src"
 
 # Set ENABLE_BUSYBOX=1 to keep the old BusyBox fallback/rescue helpers.
@@ -35,7 +37,8 @@ done
 
 [[ -f "$ROOTFS_SCRIPT" ]] || die "Missing $ROOTFS_SCRIPT"
 [[ -f "$INIT_SOURCE" ]] || die "Missing $INIT_SOURCE"
-[[ -f "$KERNEL_IMAGE" ]] || die "Missing kernel image: $KERNEL_IMAGE"
+[[ -d "$KERNEL_DIR" ]] || die "Missing kernel source tree: $KERNEL_DIR"
+[[ -f "$KERNEL_CONFIG" ]] || die "Missing kernel config: $KERNEL_CONFIG"
 [[ -x "$LIMINE_DIR/limine" ]] || die "Missing Limine executable: $LIMINE_DIR/limine"
 [[ -f "$LIMINE_DIR/limine-bios.sys" ]] || die "Missing Limine BIOS binary"
 [[ -f "$LIMINE_DIR/limine-bios-cd.bin" ]] || die "Missing Limine BIOS CD binary"
@@ -43,6 +46,16 @@ done
 
 mkdir -p "$BUILD_DIR" "$HOST_TOOLS_DIR/bin" "$SOURCES_DIR"
 export PATH="$HOST_TOOLS_DIR/bin:$PATH"
+
+build_kernel() {
+    log "Installing Cherry kernel config"
+    cp "$KERNEL_CONFIG" "$KERNEL_DIR/.config"
+
+    log "Building Linux 7.0.10"
+    make -C "$KERNEL_DIR" -j"$(nproc)" bzImage
+
+    [[ -f "$KERNEL_IMAGE" ]] || die "Kernel build finished but bzImage was not produced: $KERNEL_IMAGE"
+}
 
 build_mksquashfs() {
     if command -v mksquashfs >/dev/null 2>&1; then
@@ -96,6 +109,7 @@ build_xorriso() {
     popd >/dev/null
 }
 
+build_kernel
 build_mksquashfs
 build_xorriso
 need mksquashfs
