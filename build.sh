@@ -117,6 +117,10 @@ build_xorriso
 need mksquashfs
 need xorriso
 
+log "Compiling static cherryctl"
+gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
+    "$PROJECT_DIR/utils/cherryctl.c" -o "$BUILD_DIR/cherryctl"
+
 if [[ ! -d "$ROOTFS_DIR" || ! -x "$ROOTFS_DIR/bin/sh" || "$REBUILD_ROOTFS" == "1" ]]; then
     log "Building rootfs"
     "$ROOTFS_SCRIPT"
