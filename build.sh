@@ -9,7 +9,9 @@ HOST_TOOLS_DIR="${HOST_TOOLS_DIR:-$BUILD_DIR/host-tools}"
 INITRAMFS="${INITRAMFS:-$BUILD_DIR/init.cpio.gz}"
 ROOTFS_SFS="${ROOTFS_SFS:-$BUILD_DIR/rootfs.sfs}"
 STAGING_DIR="${STAGING_DIR:-$BUILD_DIR/iso-staging}"
-OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v0.5.1.iso}"
+VERSION_FILE="$PROJECT_DIR/VERSION"
+CHERRY_VERSION="$(cat "$VERSION_FILE" 2>/dev/null || printf "0.5.2")"
+OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v${CHERRY_VERSION}.iso}"
 
 INIT_SOURCE="$PROJECT_DIR/src/init.c"
 ROOTFS_SCRIPT="$PROJECT_DIR/rootfs.sh"
@@ -165,6 +167,10 @@ log "Compiling static Cherry init"
 INIT_BINARY="$BUILD_DIR/init"
 gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
     "$INIT_SOURCE" -o "$INIT_BINARY"
+
+log "Compiling static cherryctl"
+gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
+    "$PROJECT_DIR/utils/cherryctl.c" -o "$BUILD_DIR/cherryctl"
 
 log "Packing initramfs"
 rm -f "$INITRAMFS"
