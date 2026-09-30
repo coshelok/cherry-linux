@@ -16,6 +16,9 @@ chmod 1777 /tmp /var/tmp
 if [ -r /etc/os-release ]; then
     . /etc/os-release
     printf '\n  Welcome to %s\n' "${PRETTY_NAME:-Cherry Linux}"
+    if [ -r /etc/motd ]; then
+        cat /etc/motd
+    fi
     printf '  System initialization complete.\n\n'
 else
     printf '\n  Welcome to Cherry Linux\n'
