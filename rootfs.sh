@@ -7,6 +7,8 @@ TARGET_DIR="${ROOTFS_DIR:-$BUILD_DIR/rootfs}"
 SOURCE_DIR="${SOURCES_DIR:-$BUILD_DIR/sources}"
 THREADS="${THREADS:-$(nproc)}"
 ROOTFS_PROFILE="${ROOTFS_PROFILE:-full}"
+VERSION_FILE="$PROJECT_DIR/VERSION"
+CHERRY_VERSION="$(cat "$VERSION_FILE" 2>/dev/null || printf "0.5.2")"
 
 log()  { printf '\033[1;34m[ROOTFS]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -164,6 +166,12 @@ for util in chepm cherryfetch; do
     fi
 done
 
+log "Installing Cherry 0.5.2 base-system files"
+install -Dm755 "$PROJECT_DIR/config/etc/rc" "$TARGET_DIR/etc/rc"
+install -Dm644 "$PROJECT_DIR/config/etc/profile" "$TARGET_DIR/etc/profile"
+install -Dm644 "$PROJECT_DIR/config/etc/motd" "$TARGET_DIR/etc/motd"
+
+
 log "Writing system configuration"
 cat > "$TARGET_DIR/etc/passwd" <<'EOF_PASSWD'
 root:x:0:0:root:/root:/bin/sh
@@ -186,16 +194,18 @@ tmpfs /run tmpfs defaults 0 0
 tmpfs /tmp tmpfs defaults 0 0
 EOF_FSTAB
 
-cat > "$TARGET_DIR/etc/os-release" <<'EOF_OS'
+cat > "$TARGET_DIR/etc/os-release" <<EOF_OS
 NAME="Cherry Linux"
 ID=cherrylinux
-VERSION="0.4"
-VERSION_ID="0.4"
-PRETTY_NAME="Cherry Linux 0.4"
+VERSION="$CHERRY_VERSION"
+VERSION_ID="$CHERRY_VERSION"
+PRETTY_NAME="Cherry Linux $CHERRY_VERSION"
 EOF_OS
 
 echo "cherrylinux" > "$TARGET_DIR/etc/hostname"
 printf '%s\n' '/usr/lib' > "$TARGET_DIR/etc/ld.so.conf"
+
+install -Dm755 "$BUILD_DIR/cherryctl" "$TARGET_DIR/usr/bin/cherryctl"
 
 if [[ "$ROOTFS_PROFILE" == "minimal" ]]; then
     log "Applying minimal profile cleanup"
