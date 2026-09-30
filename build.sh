@@ -172,10 +172,6 @@ INIT_BINARY="$BUILD_DIR/init"
 gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
     "$INIT_SOURCE" -o "$INIT_BINARY"
 
-log "Compiling static cherryctl"
-gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
-    "$PROJECT_DIR/utils/cherryctl.c" -o "$BUILD_DIR/cherryctl"
-
 log "Packing initramfs"
 rm -f "$INITRAMFS"
 INITRAMFS_STAGE="$BUILD_DIR/initramfs-stage"
