@@ -424,7 +424,7 @@ static pid_t start_shell(void)
         (void)signal(SIGTTIN, SIG_DFL);
         (void)signal(SIGTTOU, SIG_DFL);
 
-        char *const shell_argv[] = { "sh", "--login", "-i", NULL };
+        char *const shell_argv[] = { "sh", "-i", NULL };
         execv("/bin/sh", shell_argv);
 
         char *const busybox_argv[] = { "busybox", "sh", "-i", NULL };
@@ -436,29 +436,6 @@ static pid_t start_shell(void)
     }
 
     return pid;
-}
-
-static void run_rc(void)
-{
-    pid_t pid = fork();
-    if (pid < 0)
-        fatal("fork /etc/rc: %s", strerror(errno));
-
-    if (pid == 0) {
-        execl("/bin/sh", "sh", "/etc/rc", (char *)NULL);
-        fprintf(stderr, "[INIT] cannot execute /etc/rc: %s\n", strerror(errno));
-        _exit(127);
-    }
-
-    int status;
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno == EINTR)
-            continue;
-        fatal("waitpid /etc/rc: %s", strerror(errno));
-    }
-
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-        fatal("/etc/rc failed");
 }
 
 static void shell_supervisor(void)
@@ -539,10 +516,13 @@ int main(void)
     setenv("HOME", "/root", 1);
     setenv("USER", "root", 1);
     setenv("SHELL", "/bin/sh", 1);
-
-    run_rc();
+    setenv("PS1", "cherry:\\w# ", 1);
 
     log_msg("INFO", "System ready");
+    printf("\n  Welcome to Cherry Linux\n");
+    printf("  GNU userspace shell: /bin/sh\n\n");
+    fflush(stdout);
+
     shell_supervisor();
     return 0;
 }
