@@ -1,8 +1,8 @@
-sources/
+/sources/
 
-rootfs/
+/rootfs/
 
-build/
+/build/
 
 init.cpio.gz
 
