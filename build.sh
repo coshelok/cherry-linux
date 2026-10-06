@@ -9,7 +9,7 @@ HOST_TOOLS_DIR="${HOST_TOOLS_DIR:-$BUILD_DIR/host-tools}"
 INITRAMFS="${INITRAMFS:-$BUILD_DIR/init.cpio.gz}"
 ROOTFS_SFS="${ROOTFS_SFS:-$BUILD_DIR/rootfs.sfs}"
 STAGING_DIR="${STAGING_DIR:-$BUILD_DIR/iso-staging}"
-OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v0.5.1.iso}"
+OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v0.5.2.iso}"
 
 BOOT_INIT_SOURCE="$PROJECT_DIR/src/boot_init.c"
 RUNTIME_INIT_SOURCE="$PROJECT_DIR/src/init.c"

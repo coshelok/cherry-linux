@@ -16,10 +16,14 @@
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
+#include <linux/magic.h>
 #include <unistd.h>
 
 #define MEDIA_WAIT_MS 10000
 #define OVERLAY_SIZE "50%"
+
+static char rootfs_loop_path[PATH_MAX];
 
 static void log_msg(const char *level, const char *fmt, ...)
 {
@@ -107,18 +111,18 @@ static int try_mount_iso(const char *dev)
     if (stat(dev, &st) < 0 || !S_ISBLK(st.st_mode))
         return -1;
 
-    (void)umount2("/cdrom", MNT_DETACH);
+    (void)umount2("/run/cherry/bootmnt", MNT_DETACH);
 
-    if (mount(dev, "/cdrom", "iso9660",
+    if (mount(dev, "/run/cherry/bootmnt", "iso9660",
               MS_RDONLY | MS_NODEV | MS_NOSUID | MS_NOEXEC, NULL) < 0)
         return -1;
 
-    if (access("/cdrom/boot/rootfs.sfs", R_OK) == 0) {
+    if (access("/run/cherry/bootmnt/boot/rootfs.sfs", R_OK) == 0) {
         log_msg("INFO", "Boot media found on %s", dev);
         return 0;
     }
 
-    (void)umount2("/cdrom", MNT_DETACH);
+    (void)umount2("/run/cherry/bootmnt", MNT_DETACH);
     return -1;
 }
 
@@ -178,6 +182,10 @@ static void attach_rootfs_loop(const char *image)
     if (stat(loop_path, &loop_st) < 0)
         mknod_if_missing(loop_path, S_IFBLK | 0600, 7, (unsigned int)index);
 
+    if (snprintf(rootfs_loop_path, sizeof(rootfs_loop_path), "%s", loop_path) >=
+        (int)sizeof(rootfs_loop_path))
+        fatal("rootfs loop device path is too long");
+
     int loop_fd = open(loop_path, O_RDWR | O_CLOEXEC);
     if (loop_fd < 0)
         fatal("open %s: %s", loop_path, strerror(errno));
@@ -200,44 +208,95 @@ static void attach_rootfs_loop(const char *image)
     close(ctl);
     close(loop_fd);
 
-    if (mount(loop_path, "/ro_root", "squashfs", MS_RDONLY, NULL) < 0) {
-        int saved_errno = errno;
-
-        int cleanup_fd = open(loop_path, O_RDWR | O_CLOEXEC);
-        if (cleanup_fd >= 0) {
-            (void)ioctl(cleanup_fd, LOOP_CLR_FD, 0);
-            close(cleanup_fd);
-        }
-
-        fatal("mount %s as SquashFS: %s", loop_path, strerror(saved_errno));
-    }
-
-    log_msg("INFO", "Mounted %s as read-only root layer", loop_path);
+    log_msg("INFO", "Attached %s to %s", image, loop_path);
 }
 
 static void build_overlay_root(void)
 {
-    mkdir_required("/ro_root", 0755);
-    mkdir_required("/rw_root", 0755);
     mkdir_required("/new_root", 0755);
+    mkdir_required("/run/cherry/airootfs", 0755);
+    mkdir_required("/run/cherry/cowspace", 0755);
 
-    mount_required("tmpfs", "/rw_root", "tmpfs", 0,
+    mount_required("tmpfs", "/run/cherry/cowspace", "tmpfs", 0,
                    "size=" OVERLAY_SIZE ",mode=0755");
 
-    mkdir_required("/rw_root/upper", 0755);
-    mkdir_required("/rw_root/work", 0755);
+    mkdir_required("/run/cherry/cowspace/upper", 0755);
+    mkdir_required("/run/cherry/cowspace/work", 0755);
+
+    mount_required(rootfs_loop_path, "/run/cherry/airootfs",
+                   "squashfs", MS_RDONLY, NULL);
 
     const char *options =
-        "lowerdir=/ro_root,upperdir=/rw_root/upper,workdir=/rw_root/work";
+        "lowerdir=/run/cherry/airootfs,"
+        "upperdir=/run/cherry/cowspace/upper,"
+        "workdir=/run/cherry/cowspace/work";
     mount_required("overlay", "/new_root", "overlay", 0, options);
 
-    log_msg("INFO", "Overlay root is ready");
+    log_msg("INFO", "Overlay root is ready (SquashFS lower + tmpfs upper)");
 }
 
 static void move_mount_tree(const char *old_path, const char *new_path)
 {
     if (mount(old_path, new_path, NULL, MS_MOVE, NULL) < 0)
         fatal("move mount %s -> %s: %s", old_path, new_path, strerror(errno));
+}
+
+static int is_initial_rootfs_fd(int fd)
+{
+    struct statfs stfs;
+    if (fstatfs(fd, &stfs) < 0)
+        return 0;
+
+    return stfs.f_type == TMPFS_MAGIC || stfs.f_type == RAMFS_MAGIC;
+}
+
+static void remove_initial_root(int fd)
+{
+    DIR *dir = fdopendir(fd);
+    if (!dir) {
+        close(fd);
+        return;
+    }
+
+    int root_fd = dirfd(dir);
+    struct stat root_st;
+    if (fstat(root_fd, &root_st) < 0) {
+        closedir(dir);
+        return;
+    }
+
+    for (;;) {
+        struct dirent *entry;
+        errno = 0;
+        entry = readdir(dir);
+        if (!entry)
+            break;
+
+        if (entry->d_name[0] == '.' &&
+            (entry->d_name[1] == '\0' ||
+             (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
+            continue;
+
+        struct stat st;
+        if (fstatat(root_fd, entry->d_name, &st, AT_SYMLINK_NOFOLLOW) < 0)
+            continue;
+
+        /* Never descend into mounted filesystems. */
+        if (st.st_dev != root_st.st_dev)
+            continue;
+
+        if (S_ISDIR(st.st_mode)) {
+            int child_fd = openat(root_fd, entry->d_name, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+            if (child_fd >= 0) {
+                remove_initial_root(child_fd);
+            }
+            (void)unlinkat(root_fd, entry->d_name, AT_REMOVEDIR);
+        } else {
+            (void)unlinkat(root_fd, entry->d_name, 0);
+        }
+    }
+
+    closedir(dir);
 }
 
 static void switch_root(void)
@@ -247,10 +306,15 @@ static void switch_root(void)
     mkdir_required("/new_root/sys", 0555);
     mkdir_required("/new_root/run", 0755);
 
+    /* /run carries Cherry's runtime mount tree into the final root. */
     move_mount_tree("/dev", "/new_root/dev");
     move_mount_tree("/proc", "/new_root/proc");
     move_mount_tree("/sys", "/new_root/sys");
     move_mount_tree("/run", "/new_root/run");
+
+    int old_root_fd = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (old_root_fd < 0)
+        fatal("open initial root: %s", strerror(errno));
 
     if (chdir("/new_root") < 0)
         fatal("chdir /new_root: %s", strerror(errno));
@@ -265,6 +329,14 @@ static void switch_root(void)
         fatal("chdir /: %s", strerror(errno));
 
     log_msg("INFO", "Switched to Cherry Linux rootfs");
+
+    if (is_initial_rootfs_fd(old_root_fd)) {
+        log_msg("INFO", "Releasing initial initramfs root");
+        remove_initial_root(old_root_fd);
+    } else {
+        close(old_root_fd);
+        log_msg("WARN", "Initial root is not tmpfs/ramfs; left untouched");
+    }
 }
 
 static void exec_runtime_init(void)
@@ -286,7 +358,7 @@ int main(void)
 
     const char *dirs[] = {
         "/proc", "/sys", "/dev", "/run", "/mnt", "/tmp",
-        "/cdrom", "/ro_root", "/rw_root", "/new_root"
+        "/new_root"
     };
 
     for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); ++i)
@@ -303,6 +375,9 @@ int main(void)
                    "mode=0620,ptmxmode=0666");
     mount_required("tmpfs", "/run", "tmpfs", 0, "mode=0755,size=10%");
 
+    mkdir_required("/run/cherry", 0755);
+    mkdir_required("/run/cherry/bootmnt", 0755);
+
     mknod_if_missing("/dev/console", S_IFCHR | 0600, 5, 1);
     mknod_if_missing("/dev/tty",     S_IFCHR | 0666, 5, 0);
     mknod_if_missing("/dev/tty0",    S_IFCHR | 0620, 4, 0);
@@ -317,7 +392,7 @@ int main(void)
     redirect_console();
 
     find_boot_media();
-    attach_rootfs_loop("/cdrom/boot/rootfs.sfs");
+    attach_rootfs_loop("/run/cherry/bootmnt/boot/rootfs.sfs");
     build_overlay_root();
     switch_root();
     exec_runtime_init();
