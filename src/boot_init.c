@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <linux/loop.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,6 @@
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #define MEDIA_WAIT_MS 10000
@@ -25,7 +25,7 @@ static void log_msg(const char *level, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stdout, "[INIT][%s] ", level);
+    fprintf(stdout, "[BOOT][%s] ", level);
     vfprintf(stdout, fmt, ap);
     fputc('\n', stdout);
     fflush(stdout);
@@ -36,7 +36,7 @@ static void fatal(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stderr, "[INIT][FATAL] ");
+    fprintf(stderr, "[BOOT][FATAL] ");
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
     fflush(stderr);
@@ -162,7 +162,6 @@ static void attach_rootfs_loop(const char *image)
         mknod_if_missing("/dev/loop-control", S_IFCHR | 0600, 10, 237);
         ctl = open("/dev/loop-control", O_RDWR | O_CLOEXEC);
     }
-
     if (ctl < 0)
         fatal("open /dev/loop-control: %s", strerror(errno));
 
@@ -171,21 +170,13 @@ static void attach_rootfs_loop(const char *image)
         fatal("LOOP_CTL_GET_FREE: %s", strerror(errno));
 
     char loop_path[PATH_MAX];
-    int n = snprintf(loop_path, sizeof(loop_path),
-                     "/dev/loop%d", index);
-
+    int n = snprintf(loop_path, sizeof(loop_path), "/dev/loop%d", index);
     if (n < 0 || (size_t)n >= sizeof(loop_path))
         fatal("loop device path is too long");
 
     struct stat loop_st;
-    if (stat(loop_path, &loop_st) < 0) {
-        mknod_if_missing(loop_path,
-                          S_IFBLK | 0600,
-                          7,
-                          (unsigned int)index);
-    }
-
-    close(ctl);
+    if (stat(loop_path, &loop_st) < 0)
+        mknod_if_missing(loop_path, S_IFBLK | 0600, 7, (unsigned int)index);
 
     int loop_fd = open(loop_path, O_RDWR | O_CLOEXEC);
     if (loop_fd < 0)
@@ -193,24 +184,20 @@ static void attach_rootfs_loop(const char *image)
 
     int image_fd = open(image, O_RDONLY | O_CLOEXEC);
     if (image_fd < 0) {
+        int saved_errno = errno;
         close(loop_fd);
-        fatal("open %s: %s", image, strerror(errno));
+        fatal("open %s: %s", image, strerror(saved_errno));
     }
 
     if (ioctl(loop_fd, LOOP_SET_FD, image_fd) < 0) {
         int saved_errno = errno;
         close(image_fd);
         close(loop_fd);
-        fatal("LOOP_SET_FD for %s: %s",
-              image, strerror(saved_errno));
+        fatal("LOOP_SET_FD for %s: %s", image, strerror(saved_errno));
     }
 
     close(image_fd);
-
-    /*
-     * The loop device is now associated with the SquashFS image.
-     * Do not keep the loop block device fd open while mounting it.
-     */
+    close(ctl);
     close(loop_fd);
 
     if (mount(loop_path, "/ro_root", "squashfs", MS_RDONLY, NULL) < 0) {
@@ -222,8 +209,7 @@ static void attach_rootfs_loop(const char *image)
             close(cleanup_fd);
         }
 
-        fatal("mount %s as SquashFS: %s",
-              loop_path, strerror(saved_errno));
+        fatal("mount %s as SquashFS: %s", loop_path, strerror(saved_errno));
     }
 
     log_msg("INFO", "Mounted %s as read-only root layer", loop_path);
@@ -281,73 +267,25 @@ static void switch_root(void)
     log_msg("INFO", "Switched to Cherry Linux rootfs");
 }
 
-static void reap_children(void)
+static void exec_runtime_init(void)
 {
-    for (;;) {
-        int status;
-        pid_t pid = waitpid(-1, &status, WNOHANG);
-        if (pid <= 0)
-            return;
-    }
-}
+    char *const argv[] = { "init", NULL };
 
-static pid_t start_shell(void)
-{
-    pid_t pid = fork();
-    if (pid < 0)
-        fatal("fork shell: %s", strerror(errno));
+    log_msg("INFO", "Transferring control to /sbin/init");
+    execv("/sbin/init", argv);
 
-    if (pid == 0) {
-        char *const shell_argv[] = { "sh", "-i", NULL };
-        execv("/bin/sh", shell_argv);
-
-        char *const busybox_argv[] = { "busybox", "sh", "-i", NULL };
-        execv("/usr/bin/busybox", busybox_argv);
-
-        fprintf(stderr, "[INIT] cannot execute /bin/sh or /usr/bin/busybox: %s\n",
-                strerror(errno));
-        _exit(127);
-    }
-
-    return pid;
-}
-
-static void shell_supervisor(void)
-{
-    for (;;) {
-        reap_children();
-        log_msg("INFO", "Starting interactive shell");
-
-        pid_t shell_pid = start_shell();
-
-        for (;;) {
-            int status;
-            pid_t pid = waitpid(-1, &status, 0);
-
-            if (pid < 0) {
-                if (errno == EINTR)
-                    continue;
-                fatal("waitpid: %s", strerror(errno));
-            }
-
-            if (pid == shell_pid)
-                break;
-        }
-
-        log_msg("WARN", "Shell exited; restarting in 1 second");
-        sleep(1);
-    }
+    fatal("cannot execute /sbin/init: %s", strerror(errno));
 }
 
 int main(void)
 {
     if (getpid() != 1)
-        fatal("Cherry init must run as PID 1 (got %ld)", (long)getpid());
+        fatal("Cherry boot init must run as PID 1 (got %ld)", (long)getpid());
 
-    log_msg("INFO", "Booting Cherry Linux...");
+    log_msg("INFO", "Starting Cherry Linux bootstrap...");
 
     const char *dirs[] = {
-        "/proc", "/sys", "/dev", "/dev/pts", "/run", "/mnt", "/tmp",
+        "/proc", "/sys", "/dev", "/run", "/mnt", "/tmp",
         "/cdrom", "/ro_root", "/rw_root", "/new_root"
     };
 
@@ -367,6 +305,10 @@ int main(void)
 
     mknod_if_missing("/dev/console", S_IFCHR | 0600, 5, 1);
     mknod_if_missing("/dev/tty",     S_IFCHR | 0666, 5, 0);
+    mknod_if_missing("/dev/tty0",    S_IFCHR | 0620, 4, 0);
+    mknod_if_missing("/dev/tty1",    S_IFCHR | 0620, 4, 1);
+    mknod_if_missing("/dev/tty2",    S_IFCHR | 0620, 4, 2);
+    mknod_if_missing("/dev/ttyS0",   S_IFCHR | 0620, 4, 64);
     mknod_if_missing("/dev/null",    S_IFCHR | 0666, 1, 3);
     mknod_if_missing("/dev/zero",    S_IFCHR | 0666, 1, 5);
     mknod_if_missing("/dev/random",  S_IFCHR | 0666, 1, 8);
@@ -378,21 +320,7 @@ int main(void)
     attach_rootfs_loop("/cdrom/boot/rootfs.sfs");
     build_overlay_root();
     switch_root();
+    exec_runtime_init();
 
-    if (sethostname("cherrylinux", strlen("cherrylinux")) < 0)
-        log_msg("WARN", "sethostname failed: %s", strerror(errno));
-
-    setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin", 1);
-    setenv("HOME", "/root", 1);
-    setenv("USER", "root", 1);
-    setenv("SHELL", "/bin/sh", 1);
-    setenv("PS1", "cherry:\\w# ", 1);
-
-    log_msg("INFO", "System ready");
-    printf("\n  Welcome to Cherry Linux\n");
-    printf("  GNU userspace shell: /bin/sh\n\n");
-    fflush(stdout);
-
-    shell_supervisor();
     return 0;
 }

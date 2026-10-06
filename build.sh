@@ -11,14 +11,14 @@ ROOTFS_SFS="${ROOTFS_SFS:-$BUILD_DIR/rootfs.sfs}"
 STAGING_DIR="${STAGING_DIR:-$BUILD_DIR/iso-staging}"
 OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v0.5.1.iso}"
 
-INIT_SOURCE="$PROJECT_DIR/src/init.c"
+BOOT_INIT_SOURCE="$PROJECT_DIR/src/boot_init.c"
+RUNTIME_INIT_SOURCE="$PROJECT_DIR/src/init.c"
 ROOTFS_SCRIPT="$PROJECT_DIR/rootfs.sh"
 KERNEL_DIR="$PROJECT_DIR/kernel/linux-7.0.10"
 KERNEL_CONFIG="$PROJECT_DIR/cherry.config"
 KERNEL_IMAGE="$KERNEL_DIR/arch/x86/boot/bzImage"
 LIMINE_DIR="$PROJECT_DIR/tools/limine-src"
 
-# Set ENABLE_BUSYBOX=1 to keep the old BusyBox fallback/rescue helpers.
 ENABLE_BUSYBOX="${ENABLE_BUSYBOX:-0}"
 REBUILD_ROOTFS="${REBUILD_ROOTFS:-0}"
 
@@ -36,7 +36,8 @@ for cmd in gcc cpio make tar wget nproc chmod cp rm find install; do
 done
 
 [[ -f "$ROOTFS_SCRIPT" ]] || die "Missing $ROOTFS_SCRIPT"
-[[ -f "$INIT_SOURCE" ]] || die "Missing $INIT_SOURCE"
+[[ -f "$BOOT_INIT_SOURCE" ]] || die "Missing $BOOT_INIT_SOURCE"
+[[ -f "$RUNTIME_INIT_SOURCE" ]] || die "Missing $RUNTIME_INIT_SOURCE"
 [[ -d "$KERNEL_DIR" ]] || die "Missing kernel source tree: $KERNEL_DIR"
 [[ -f "$KERNEL_CONFIG" ]] || die "Missing kernel config: $KERNEL_CONFIG"
 [[ -x "$LIMINE_DIR/limine" ]] || die "Missing Limine executable: $LIMINE_DIR/limine"
@@ -153,6 +154,19 @@ else
     log "BusyBox disabled (GNU userspace is the default)"
 fi
 
+log "Compiling static Cherry bootstrap init"
+BOOT_INIT_BINARY="$BUILD_DIR/boot-init"
+gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
+    "$BOOT_INIT_SOURCE" -o "$BOOT_INIT_BINARY"
+
+log "Compiling static Cherry runtime init"
+RUNTIME_INIT_BINARY="$BUILD_DIR/runtime-init"
+gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
+    "$RUNTIME_INIT_SOURCE" -o "$RUNTIME_INIT_BINARY"
+
+log "Installing runtime init into rootfs"
+install -Dm755 "$RUNTIME_INIT_BINARY" "$ROOTFS_DIR/usr/sbin/init"
+
 log "Building SquashFS image"
 rm -f "$ROOTFS_SFS"
 mksquashfs "$ROOTFS_DIR" "$ROOTFS_SFS" \
@@ -161,22 +175,17 @@ mksquashfs "$ROOTFS_DIR" "$ROOTFS_SFS" \
     -no-xattrs \
     -noappend >/dev/null
 
-log "Compiling static Cherry init"
-INIT_BINARY="$BUILD_DIR/init"
-gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
-    "$INIT_SOURCE" -o "$INIT_BINARY"
-
 log "Packing initramfs"
 rm -f "$INITRAMFS"
 INITRAMFS_STAGE="$BUILD_DIR/initramfs-stage"
 rm -rf "$INITRAMFS_STAGE"
 mkdir -p "$INITRAMFS_STAGE"
-install -Dm755 "$INIT_BINARY" "$INITRAMFS_STAGE/init"
+install -Dm755 "$BOOT_INIT_BINARY" "$INITRAMFS_STAGE/init"
 (
     cd "$INITRAMFS_STAGE"
     printf '%s\n' init | cpio -o -H newc --owner=0:0 --reproducible
 ) | gzip -9 -n > "$INITRAMFS"
-rm -rf "$INITRAMFS_STAGE" "$INIT_BINARY"
+rm -rf "$INITRAMFS_STAGE" "$BOOT_INIT_BINARY" "$RUNTIME_INIT_BINARY"
 
 log "Creating ISO staging directory"
 rm -rf "$STAGING_DIR"
