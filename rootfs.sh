@@ -12,9 +12,17 @@ log()  { printf '\033[1;34m[ROOTFS]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 
-for cmd in gcc make wget tar file ldd find awk cut grep install; do
+for cmd in gcc make wget tar file ldd find awk cut grep install tr; do
     need "$cmd"
 done
+
+VERSION_FILE="$PROJECT_DIR/VERSION"
+if [[ -z "${CHERRY_VERSION:-}" ]]; then
+    [[ -f "$VERSION_FILE" ]] || die "Missing version file: $VERSION_FILE"
+    CHERRY_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+fi
+[[ "$CHERRY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || \
+    die "Invalid Cherry Linux version: $CHERRY_VERSION"
 
 mkdir -p "$BUILD_DIR" "$SOURCE_DIR"
 
@@ -42,7 +50,6 @@ if [[ "$CFLAGS" != *-std=* ]]; then
 fi
 export CXXFLAGS="${CXXFLAGS:-$CFLAGS}"
 
-# name|url|configure arguments
 PKGS=(
     "bash|https://ftp.gnu.org/gnu/bash/bash-5.2.32.tar.gz|--without-curses"
     "coreutils|https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz|--enable-install-program=hostname"
@@ -101,19 +108,16 @@ for entry in "${PKGS[@]}"; do
     fi
 
     [[ -f Makefile ]] || die "$name: no Makefile or configure script available"
-
     log "  building with $THREADS jobs"
     make -j"$THREADS"
 
     if [[ "$name" == "bzip2" ]]; then
-        # Upstream bzip2 1.0.8 uses PREFIX rather than DESTDIR.
         make PREFIX="$TARGET_DIR/usr" install
     else
         make DESTDIR="$TARGET_DIR" install
     fi
 
     popd >/dev/null
-
 done
 
 log "Creating usr-merge layout"
@@ -186,12 +190,12 @@ tmpfs /run tmpfs defaults 0 0
 tmpfs /tmp tmpfs defaults 0 0
 EOF_FSTAB
 
-cat > "$TARGET_DIR/etc/os-release" <<'EOF_OS'
+cat > "$TARGET_DIR/etc/os-release" <<EOF_OS
 NAME="Cherry Linux"
 ID=cherrylinux
-VERSION="0.4"
-VERSION_ID="0.4"
-PRETTY_NAME="Cherry Linux 0.4"
+VERSION="${CHERRY_VERSION}"
+VERSION_ID="${CHERRY_VERSION}"
+PRETTY_NAME="Cherry Linux ${CHERRY_VERSION}"
 EOF_OS
 
 echo "cherrylinux" > "$TARGET_DIR/etc/hostname"

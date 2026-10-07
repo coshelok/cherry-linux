@@ -9,7 +9,6 @@ HOST_TOOLS_DIR="${HOST_TOOLS_DIR:-$BUILD_DIR/host-tools}"
 INITRAMFS="${INITRAMFS:-$BUILD_DIR/init.cpio.gz}"
 ROOTFS_SFS="${ROOTFS_SFS:-$BUILD_DIR/rootfs.sfs}"
 STAGING_DIR="${STAGING_DIR:-$BUILD_DIR/iso-staging}"
-OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v0.5.2.iso}"
 
 BOOT_INIT_SOURCE="$PROJECT_DIR/src/boot_init.c"
 RUNTIME_INIT_SOURCE="$PROJECT_DIR/src/init.c"
@@ -26,12 +25,19 @@ log()  { printf '\033[1;34m[BUILD]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 
+VERSION_FILE="$PROJECT_DIR/VERSION"
+[[ -f "$VERSION_FILE" ]] || die "Missing version file: $VERSION_FILE"
+CHERRY_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+[[ "$CHERRY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || \
+    die "Invalid Cherry Linux version: $CHERRY_VERSION"
+OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v${CHERRY_VERSION}.iso}"
+
 cleanup() {
     rm -rf "$STAGING_DIR"
 }
 trap cleanup EXIT
 
-for cmd in gcc cpio make tar wget nproc chmod cp rm find install; do
+for cmd in gcc cpio make tar wget nproc chmod cp rm find install tr; do
     need "$cmd"
 done
 

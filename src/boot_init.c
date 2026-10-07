@@ -108,19 +108,36 @@ static int try_mount_iso(const char *dev)
 {
     struct stat st;
 
-    if (stat(dev, &st) < 0 || !S_ISBLK(st.st_mode))
+    if (stat(dev, &st) < 0) {
+        log_msg("DEBUG", "stat %s failed: %s", dev, strerror(errno));
         return -1;
+    }
+
+    if (!S_ISBLK(st.st_mode)) {
+        log_msg("DEBUG", "%s exists but is not a block device", dev);
+        return -1;
+    }
+
+    log_msg("DEBUG", "Trying ISO9660 mount on %s", dev);
 
     (void)umount2("/run/cherry/bootmnt", MNT_DETACH);
 
     if (mount(dev, "/run/cherry/bootmnt", "iso9660",
-              MS_RDONLY | MS_NODEV | MS_NOSUID | MS_NOEXEC, NULL) < 0)
+              MS_RDONLY | MS_NODEV | MS_NOSUID | MS_NOEXEC, NULL) < 0) {
+        log_msg("DEBUG", "mount %s failed: %s", dev, strerror(errno));
         return -1;
+    }
+
+    log_msg("DEBUG", "ISO9660 mounted from %s", dev);
 
     if (access("/run/cherry/bootmnt/boot/rootfs.sfs", R_OK) == 0) {
         log_msg("INFO", "Boot media found on %s", dev);
         return 0;
     }
+
+    log_msg("DEBUG",
+            "%s mounted, but /boot/rootfs.sfs is missing",
+            dev);
 
     (void)umount2("/run/cherry/bootmnt", MNT_DETACH);
     return -1;
@@ -135,24 +152,37 @@ static void find_boot_media(void)
 
     for (int elapsed = 0; elapsed < MEDIA_WAIT_MS; elapsed += 200) {
         DIR *dir = opendir("/sys/class/block");
-        if (dir) {
+
+        if (!dir) {
+            log_msg("DEBUG",
+                    "cannot open /sys/class/block: %s",
+                    strerror(errno));
+        } else {
             struct dirent *entry;
+
             while ((entry = readdir(dir)) != NULL) {
-                if (entry->d_name[0] == '.' || !is_media_candidate(entry->d_name))
+                if (entry->d_name[0] == '.' ||
+                    !is_media_candidate(entry->d_name))
                     continue;
 
                 char dev[PATH_MAX];
-                int n = snprintf(dev, sizeof(dev), "/dev/%s", entry->d_name);
+                int n = snprintf(dev, sizeof(dev),
+                                 "/dev/%s", entry->d_name);
+
                 if (n < 0 || (size_t)n >= sizeof(dev))
                     continue;
+
+                log_msg("DEBUG", "block device: %s", entry->d_name);
 
                 if (try_mount_iso(dev) == 0) {
                     closedir(dir);
                     return;
                 }
             }
+
             closedir(dir);
         }
+
         usleep(200000);
     }
 
@@ -286,7 +316,8 @@ static void remove_initial_root(int fd)
             continue;
 
         if (S_ISDIR(st.st_mode)) {
-            int child_fd = openat(root_fd, entry->d_name, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+            int child_fd = openat(root_fd, entry->d_name,
+                                  O_RDONLY | O_DIRECTORY | O_CLOEXEC);
             if (child_fd >= 0) {
                 remove_initial_root(child_fd);
             }

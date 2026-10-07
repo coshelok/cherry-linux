@@ -6,7 +6,22 @@ WHITE='\033[1;37m'
 RESET='\033[0m'
 
 USER_HOST="${USER:-root}@$(hostname 2>/dev/null || echo "cherry")"
-OS="Cherry Linux 0.4 $(uname -m)"
+OS_NAME="Cherry Linux"
+OS_VERSION=""
+OS_PRETTY=""
+if [ -r /etc/os-release ]; then
+    . /etc/os-release
+    OS_NAME="${NAME:-$OS_NAME}"
+    OS_VERSION="${VERSION:-}"
+    OS_PRETTY="${PRETTY_NAME:-}"
+fi
+if [ -n "$OS_PRETTY" ]; then
+    OS="$OS_PRETTY $(uname -m)"
+elif [ -n "$OS_VERSION" ]; then
+    OS="$OS_NAME $OS_VERSION $(uname -m)"
+else
+    OS="$OS_NAME $(uname -m)"
+fi
 KERNEL=$(uname -r 2>/dev/null || echo "Unknown")
 
 if [ -f /proc/uptime ]; then
