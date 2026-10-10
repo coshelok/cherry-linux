@@ -7,12 +7,15 @@ TARGET_DIR="${ROOTFS_DIR:-$BUILD_DIR/rootfs}"
 SOURCE_DIR="${SOURCES_DIR:-$BUILD_DIR/sources}"
 THREADS="${THREADS:-$(nproc)}"
 ROOTFS_PROFILE="${ROOTFS_PROFILE:-full}"
+ENABLE_NET="${ENABLE_NET:-1}"
+ENABLE_BUSYBOX="${ENABLE_BUSYBOX:-0}"
+BUSYBOX_VERSION="${BUSYBOX_VERSION:-1.36.1}"
 
 log()  { printf '\033[1;34m[ROOTFS]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 
-for cmd in gcc make wget tar file ldd find awk cut grep install tr; do
+for cmd in gcc make wget tar file ldd find awk cut grep install tr sed sort basename; do
     need "$cmd"
 done
 
@@ -131,6 +134,94 @@ ln -s usr/lib  "$TARGET_DIR/lib64"
 ln -sfn ../run "$TARGET_DIR/var/run"
 ln -sfn bash "$TARGET_DIR/usr/bin/sh"
 
+build_busybox_tools() {
+    if [[ "$ENABLE_NET" != "1" && "$ENABLE_BUSYBOX" != "1" ]]; then
+        return 0
+    fi
+
+    log "Building BusyBox ${BUSYBOX_VERSION} (networking toolset)"
+    local archive="$SOURCE_DIR/busybox-${BUSYBOX_VERSION}.tar.bz2"
+    local src="$SOURCE_DIR/busybox"
+
+    if [[ ! -f "$archive" ]]; then
+        log "  downloading $(basename "$archive")"
+        wget -q --tries=3 --timeout=30 -O "$archive" \
+            "https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
+    else
+        log "  using cached archive $(basename "$archive")"
+    fi
+
+    rm -rf "$src"
+    mkdir -p "$src"
+    tar -xf "$archive" -C "$src" --strip-components=1
+
+    (
+        cd "$src"
+        unset CFLAGS CXXFLAGS
+        make distclean >/dev/null 2>&1 || true
+        make defconfig >/dev/null
+        # The BusyBox tc applet no longer compiles against modern kernel
+        # headers and is not needed on a live image.
+        sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
+        yes "" | make oldconfig >/dev/null 2>&1 || true
+        log "  compiling BusyBox"
+        make -j"$THREADS" >/dev/null
+    )
+
+    install -Dm755 "$src/busybox" "$TARGET_DIR/usr/bin/busybox"
+
+    # Networking applets only; GNU coreutils remain the default commands.
+    local applets=(ip udhcpc ping wget nslookup netstat route ifconfig)
+    (
+        cd "$TARGET_DIR/usr/bin"
+        for applet in "${applets[@]}"; do
+            [[ -e "$applet" ]] || ln -s busybox "$applet"
+        done
+    )
+
+    # Power management applets live in /usr/sbin, as is conventional.
+    mkdir -p "$TARGET_DIR/usr/sbin"
+    (
+        cd "$TARGET_DIR/usr/sbin"
+        for applet in halt poweroff reboot; do
+            [[ -e "$applet" ]] || ln -s ../bin/busybox "$applet"
+        done
+    )
+
+    # BusyBox has no `shutdown`, so ship a small wrapper around it.
+    cat > "$TARGET_DIR/usr/sbin/shutdown" <<'EOF_SHUTDOWN'
+#!/bin/sh
+# Cherry Linux shutdown wrapper: reboot, halt or power off.
+ACTION=poweroff
+
+for arg in "$@"; do
+    case "$arg" in
+        -r|--reboot)                ACTION=reboot   ;;
+        -h|-H|-P|--halt|--poweroff) ACTION=poweroff ;;
+        -c|--cancel)                exit 0          ;;
+        *)                          :               ;;
+    esac
+done
+
+sync
+exec "/sbin/$ACTION"
+EOF_SHUTDOWN
+    chmod 755 "$TARGET_DIR/usr/sbin/shutdown"
+
+    if [[ "$ENABLE_BUSYBOX" == "1" ]]; then
+        (
+            cd "$TARGET_DIR/usr/bin"
+            while IFS= read -r cmd; do
+                [[ -n "$cmd" ]] || continue
+                [[ -e "$cmd" ]] || ln -s busybox "$cmd"
+            done < <(./busybox --list)
+        )
+        log "BusyBox compatibility layer enabled"
+    fi
+}
+
+build_busybox_tools
+
 log "Copying runtime shared-library dependencies"
 copy_lib() {
     local src="$1"
@@ -200,6 +291,99 @@ EOF_OS
 
 echo "cherrylinux" > "$TARGET_DIR/etc/hostname"
 printf '%s\n' '/usr/lib' > "$TARGET_DIR/etc/ld.so.conf"
+
+if [[ "$ENABLE_NET" == "1" ]]; then
+    log "Writing networking configuration"
+
+    cat > "$TARGET_DIR/etc/hosts" <<'EOF_HOSTS'
+127.0.0.1 localhost cherrylinux
+::1       localhost cherrylinux
+EOF_HOSTS
+
+    cat > "$TARGET_DIR/etc/nsswitch.conf" <<'EOF_NSSWITCH'
+passwd: files
+group:  files
+shadow: files
+hosts:  files dns
+networks: files
+services: files
+EOF_NSSWITCH
+
+    printf '%s\n' 'nameserver 1.1.1.1' > "$TARGET_DIR/etc/resolv.conf"
+
+    install -d "$TARGET_DIR/usr/share/udhcpc" "$TARGET_DIR/usr/lib/cherry"
+
+    cat > "$TARGET_DIR/usr/share/udhcpc/default.script" <<'EOF_UDHCPC'
+#!/bin/sh
+# Cherry Linux udhcpc handler: address, default route and DNS.
+RESOLV_CONF=/etc/resolv.conf
+
+case "$1" in
+    deconfig)
+        ip -4 addr flush dev "$interface" 2>/dev/null
+        ip link set dev "$interface" up 2>/dev/null
+        ;;
+    bound|renew)
+        # Removing the address also drops the kernel's connected route; never
+        # `ip route flush dev` here or the default gateway becomes unreachable.
+        ip -4 addr flush dev "$interface" 2>/dev/null
+        ip addr add "$ip/$mask" dev "$interface" 2>/dev/null
+
+        ip route del default dev "$interface" 2>/dev/null
+        for r in $router; do
+            ip route add default via "$r" dev "$interface" 2>/dev/null
+        done
+
+        : > "$RESOLV_CONF"
+        if [ -n "$domain" ]; then
+            echo "search $domain" >> "$RESOLV_CONF"
+        fi
+        for s in $dns; do
+            echo "nameserver $s" >> "$RESOLV_CONF"
+        done
+        ;;
+esac
+
+exit 0
+EOF_UDHCPC
+    chmod 755 "$TARGET_DIR/usr/share/udhcpc/default.script"
+
+    cat > "$TARGET_DIR/usr/lib/cherry/net-up" <<'EOF_NETUP'
+#!/bin/sh
+# Bring up link-local interfaces and request a DHCP lease for each physical NIC.
+PATH=/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+log() { printf '[net] %s\n' "$*"; }
+
+ip link set lo up 2>/dev/null || true
+
+configured=0
+for sysif in /sys/class/net/*; do
+    [ -e "$sysif" ] || continue
+    iface=${sysif##*/}
+    [ "$iface" = lo ] && continue
+    [ -e "$sysif/device" ] || continue
+
+    ip link set "$iface" up 2>/dev/null || true
+    log "requesting DHCP lease on $iface"
+
+    if udhcpc -i "$iface" -n -q -t 3 -T 2 \
+            -s /usr/share/udhcpc/default.script; then
+        addr=$(ip -4 -o addr show dev "$iface" 2>/dev/null | awk '{print $4}')
+        gw=$(ip -4 route show dev "$iface" 2>/dev/null | awk '$1=="default"{print $3; exit}')
+        log "$iface online: ${addr:-<no address>}${gw:+ via $gw}"
+        configured=1
+    else
+        log "$iface: no DHCP lease"
+    fi
+done
+
+[ "$configured" = 1 ] || log "no interface obtained a DHCP lease"
+exit 0
+EOF_NETUP
+    chmod 755 "$TARGET_DIR/usr/lib/cherry/net-up"
+fi
 
 if [[ "$ROOTFS_PROFILE" == "minimal" ]]; then
     log "Applying minimal profile cleanup"

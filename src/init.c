@@ -200,6 +200,54 @@ static void reap_children(void)
     }
 }
 
+static volatile sig_atomic_t shutdown_request = -1;
+
+static void shutdown_signal_handler(int sig)
+{
+    if (sig == SIGUSR1)      /* BusyBox halt */
+        shutdown_request = 0;
+    else if (sig == SIGUSR2) /* BusyBox poweroff */
+        shutdown_request = 1;
+    else if (sig == SIGTERM) /* BusyBox reboot */
+        shutdown_request = 2;
+}
+
+static void install_shutdown_handlers(void)
+{
+    static const int sigs[] = { SIGUSR1, SIGUSR2, SIGTERM };
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = shutdown_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0; /* no SA_RESTART: let signals interrupt waitpid() */
+
+    for (size_t i = 0; i < sizeof(sigs) / sizeof(sigs[0]); ++i)
+        sigaction(sigs[i], &sa, NULL);
+}
+
+static void perform_shutdown(void)
+{
+    static const unsigned int actions[] = {
+        RB_HALT_SYSTEM,
+        RB_POWER_OFF,
+        RB_AUTOBOOT,
+    };
+    static const char *const names[] = { "halt", "poweroff", "reboot" };
+
+    log_msg("INFO", "Shutdown requested: %s", names[shutdown_request]);
+    sync();
+
+    if (reboot(actions[shutdown_request]) == 0) {
+        for (;;)
+            pause();
+    }
+
+    log_msg("FATAL", "reboot syscall failed: %s", strerror(errno));
+    for (;;)
+        pause();
+}
+
 static void shell_supervisor(void)
 {
     for (;;) {
@@ -211,6 +259,9 @@ static void shell_supervisor(void)
         for (;;) {
             int status;
             pid_t pid = waitpid(-1, &status, 0);
+
+            if (shutdown_request >= 0)
+                perform_shutdown();
 
             if (pid < 0) {
                 if (errno == EINTR)
@@ -224,6 +275,32 @@ static void shell_supervisor(void)
 
         log_msg("WARN", "Shell exited; restarting in 1 second");
         sleep(1);
+    }
+}
+
+static void run_network_setup(void)
+{
+    const char *script = "/usr/lib/cherry/net-up";
+
+    if (access(script, X_OK) != 0)
+        return;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        log_msg("WARN", "fork network setup: %s", strerror(errno));
+        return;
+    }
+
+    if (pid == 0) {
+        char *const argv[] = { (char *)script, NULL };
+        execv(script, argv);
+        _exit(127);
+    }
+
+    int status;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR)
+            break;
     }
 }
 
@@ -246,6 +323,10 @@ int main(void)
 
     log_msg("INFO", "Starting Cherry Linux runtime");
     setup_environment();
+    install_shutdown_handlers();
+
+    log_msg("INFO", "Configuring network");
+    run_network_setup();
 
     log_msg("INFO", "System ready");
     printf("\n  Welcome to Cherry Linux\n");

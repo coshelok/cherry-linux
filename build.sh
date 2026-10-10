@@ -19,7 +19,10 @@ KERNEL_IMAGE="$KERNEL_DIR/arch/x86/boot/bzImage"
 LIMINE_DIR="$PROJECT_DIR/tools/limine-src"
 
 ENABLE_BUSYBOX="${ENABLE_BUSYBOX:-0}"
+ENABLE_NET="${ENABLE_NET:-1}"
 REBUILD_ROOTFS="${REBUILD_ROOTFS:-0}"
+
+export ENABLE_BUSYBOX ENABLE_NET
 
 log()  { printf '\033[1;34m[BUILD]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -57,6 +60,9 @@ export PATH="$HOST_TOOLS_DIR/bin:$PATH"
 build_kernel() {
     log "Installing Cherry kernel config"
     cp "$KERNEL_CONFIG" "$KERNEL_DIR/.config"
+
+    log "Normalizing kernel config"
+    make -C "$KERNEL_DIR" olddefconfig >/dev/null
 
     log "Building Linux 7.0.10"
     make -C "$KERNEL_DIR" -j"$(nproc)" bzImage
@@ -133,31 +139,10 @@ fi
 [[ -x "$ROOTFS_DIR/bin/sh" ]] || die "rootfs/bin/sh is missing or not executable"
 [[ -f "$ROOTFS_DIR/etc/os-release" ]] || die "rootfs/etc/os-release is missing"
 
-if [[ "$ENABLE_BUSYBOX" == "1" ]]; then
-    BUSYBOX_SRC="$PROJECT_DIR/tools/busybox"
-    if [[ ! -f "$BUSYBOX_SRC" ]]; then
-        log "Downloading optional static BusyBox"
-        mkdir -p "$PROJECT_DIR/tools"
-        wget -q --tries=3 --timeout=30 -O "$BUSYBOX_SRC" \
-            "https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox"
-        chmod +x "$BUSYBOX_SRC"
-    fi
-
-    chmod +x "$BUSYBOX_SRC"
-    "$BUSYBOX_SRC" --help >/dev/null 2>&1 || die "Invalid BusyBox binary"
-    install -Dm755 "$BUSYBOX_SRC" "$ROOTFS_DIR/usr/bin/busybox"
-
-    (
-        cd "$ROOTFS_DIR/usr/bin"
-        while IFS= read -r cmd; do
-            [[ -n "$cmd" ]] || continue
-            [[ -e "$cmd" ]] || ln -s busybox "$cmd"
-        done < <(./busybox --list)
-    )
-    log "Optional BusyBox compatibility layer enabled"
-else
-    rm -f "$ROOTFS_DIR/usr/bin/busybox"
-    log "BusyBox disabled (GNU userspace is the default)"
+if [[ "$ENABLE_NET" == "1" || "$ENABLE_BUSYBOX" == "1" ]]; then
+    [[ -x "$ROOTFS_DIR/usr/bin/busybox" ]] || \
+        die "rootfs is missing BusyBox; rebuild it with REBUILD_ROOTFS=1"
+    log "BusyBox networking toolset present (built from source by rootfs.sh)"
 fi
 
 log "Compiling static Cherry bootstrap init"
