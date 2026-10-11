@@ -12,6 +12,7 @@ ENABLE_BUSYBOX="${ENABLE_BUSYBOX:-0}"
 BUSYBOX_VERSION="${BUSYBOX_VERSION:-1.36.1}"
 
 log()  { printf '\033[1;34m[ROOTFS]\033[0m %s\n' "$*"; }
+info() { printf '\033[1;34m[ROOTFS]\033[0m   %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 
@@ -53,6 +54,103 @@ if [[ "$CFLAGS" != *-std=* ]]; then
 fi
 export CXXFLAGS="${CXXFLAGS:-$CFLAGS}"
 
+# Point every build system at the staging root so packages are linked against
+# what we have already installed instead of the build host.
+export PKG_CONFIG_SYSROOT_DIR="$TARGET_DIR"
+export PKG_CONFIG_LIBDIR="$TARGET_DIR/usr/lib/pkgconfig:$TARGET_DIR/usr/share/pkgconfig:$TARGET_DIR/usr/lib64/pkgconfig"
+export CPPFLAGS="-I$TARGET_DIR/usr/include ${CPPFLAGS:-}"
+export LDFLAGS="-L$TARGET_DIR/usr/lib -Wl,-rpath-link,$TARGET_DIR/usr/lib ${LDFLAGS:-}"
+export ACLOCAL_PATH="$TARGET_DIR/usr/share/aclocal${ACLOCAL_PATH:+:$ACLOCAL_PATH}"
+
+# Let build steps of later packages find tools already staged in the rootfs.
+# Host tools remain reachable afterwards.
+export PATH="$TARGET_DIR/usr/bin:$TARGET_DIR/usr/sbin:$PATH"
+
+# ---------------------------------------------------------------------------
+# Generic package builder.
+#   build_package <name> <url> [extra configure/make arguments...]
+# The build system is detected from the extracted sources.
+# ---------------------------------------------------------------------------
+build_package() {
+    local name="$1" url="$2"
+    shift 2
+    local -a extra=("$@")
+    local archive="$SOURCE_DIR/$(basename "$url")"
+    local src="$SOURCE_DIR/$name"
+    local pkglog="$BUILD_DIR/pkg-$name.log"
+
+    if [[ ! -f "$archive" ]]; then
+        log "Downloading $(basename "$url")"
+        wget -q --tries=3 --timeout=60 -O "$archive.part" "$url" \
+            || die "$name: download failed: $url"
+        mv "$archive.part" "$archive"
+    else
+        info "using cached $(basename "$archive")"
+    fi
+
+    if [[ ! -d "$src" ]]; then
+        mkdir -p "$src"
+        tar -xf "$archive" -C "$src" --strip-components=1
+    fi
+
+    pushd "$src" >/dev/null
+
+    if [[ -f meson.build && ! -f configure ]]; then
+        need meson
+        need ninja
+        info "meson build"
+        rm -rf _build
+        if ! meson setup _build \
+                --prefix=/usr --libdir=/usr/lib --sysconfdir=/etc \
+                --buildtype=release "${extra[@]}" >"$pkglog" 2>&1; then
+            die "$name: meson setup failed:\n$(tail -40 "$pkglog")"
+        fi
+        if ! DESTDIR="$TARGET_DIR" ninja -C _build install >"$pkglog" 2>&1; then
+            die "$name: ninja install failed:\n$(tail -40 "$pkglog")"
+        fi
+    elif [[ -f configure || -f configure.ac ]]; then
+        if [[ ! -f configure ]]; then
+            need autoreconf
+            info "autoreconf"
+            NOCONFIGURE=1 autoreconf -fi >"$pkglog" 2>&1 || true
+        fi
+        info "configure"
+        if ! ./configure --prefix=/usr --sysconfdir=/etc --libdir=/usr/lib \
+                --disable-static "${extra[@]}" >"$pkglog" 2>&1; then
+            die "$name: configure failed:\n$(tail -40 "$pkglog")"
+        fi
+        info "make"
+        if ! make -j"$THREADS" >"$pkglog" 2>&1; then
+            die "$name: make failed:\n$(tail -40 "$pkglog")"
+        fi
+        if ! make DESTDIR="$TARGET_DIR" install >"$pkglog" 2>&1; then
+            die "$name: make install failed:\n$(tail -40 "$pkglog")"
+        fi
+    elif [[ -f Makefile ]]; then
+        info "make (plain)"
+        if ! make -j"$THREADS" PREFIX=/usr "${extra[@]}" >"$pkglog" 2>&1; then
+            die "$name: make failed:\n$(tail -40 "$pkglog")"
+        fi
+        if ! make DESTDIR="$TARGET_DIR" PREFIX=/usr "${extra[@]}" install >"$pkglog" 2>&1; then
+            die "$name: make install failed:\n$(tail -40 "$pkglog")"
+        fi
+    else
+        die "$name: no supported build system in $src"
+    fi
+
+    popd >/dev/null
+
+    # Staged libtool archives embed non-sysrooted absolute paths from the
+    # target prefix and confuse downstream libtool links. Shared libraries
+    # do not need them; drop them after every package install.
+    rm -f "$TARGET_DIR"/usr/lib/*.la \
+          "$TARGET_DIR"/usr/lib64/*.la \
+          "$TARGET_DIR"/usr/lib/*/lib*.la 2>/dev/null || true
+}
+
+# ---------------------------------------------------------------------------
+# Base GNU userland.
+# ---------------------------------------------------------------------------
 PKGS=(
     "bash|https://ftp.gnu.org/gnu/bash/bash-5.2.32.tar.gz|--without-curses"
     "coreutils|https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz|--enable-install-program=hostname"
@@ -76,51 +174,32 @@ fi
 
 for entry in "${PKGS[@]}"; do
     IFS='|' read -r name url conf <<< "$entry"
-    log "Processing $name"
-
-    archive="$SOURCE_DIR/$(basename "$url")"
-    src="$SOURCE_DIR/$name"
-
-    if [[ ! -f "$archive" ]]; then
-        log "  downloading $url"
-        wget -q --tries=3 --timeout=30 -O "$archive" "$url"
-    else
-        log "  using cached archive $(basename "$archive")"
-    fi
-
-    if [[ ! -d "$src" ]]; then
-        log "  extracting source"
-        mkdir -p "$src"
-        tar -xf "$archive" -C "$src" --strip-components=1
-    fi
-
-    pushd "$src" >/dev/null
-
-    if [[ ! -f Makefile ]]; then
-        if [[ -f configure ]]; then
-            log "  configuring"
-            read -r -a conf_args <<< "$conf"
-            ./configure --prefix=/usr --sysconfdir=/etc "${conf_args[@]}"
-        elif [[ -f configure.ac ]]; then
-            need autoreconf
-            log "  generating configure script"
-            autoreconf -fi
-            read -r -a conf_args <<< "$conf"
-            ./configure --prefix=/usr --sysconfdir=/etc "${conf_args[@]}"
-        fi
-    fi
-
-    [[ -f Makefile ]] || die "$name: no Makefile or configure script available"
-    log "  building with $THREADS jobs"
-    make -j"$THREADS"
+    log "Building $name"
 
     if [[ "$name" == "bzip2" ]]; then
-        make PREFIX="$TARGET_DIR/usr" install
-    else
-        make DESTDIR="$TARGET_DIR" install
+        # bzip2 has no configure script and a custom install target.
+        src="$SOURCE_DIR/bzip2"
+        archive="$SOURCE_DIR/$(basename "$url")"
+        if [[ ! -f "$archive" ]]; then
+            wget -q --tries=3 --timeout=60 -O "$archive.part" "$url" \
+                || die "bzip2: download failed"
+            mv "$archive.part" "$archive"
+        fi
+        if [[ ! -d "$src" ]]; then
+            mkdir -p "$src"
+            tar -xf "$archive" -C "$src" --strip-components=1
+        fi
+        # bzip2 ships only a static archive; build it PIC so downstream
+        # libraries can link it into shared objects.
+        make -C "$src" clean >/dev/null 2>&1 || true
+        make -C "$src" -j"$THREADS" CFLAGS="$CFLAGS -fPIC" libbz2.a >/dev/null
+        make -C "$src" -j"$THREADS" CFLAGS="$CFLAGS -fPIC" >/dev/null
+        make -C "$src" PREFIX="$TARGET_DIR/usr" install >/dev/null
+        continue
     fi
 
-    popd >/dev/null
+    read -r -a conf_args <<< "$conf"
+    build_package "$name" "$url" "${conf_args[@]}"
 done
 
 log "Creating usr-merge layout"
@@ -139,16 +218,16 @@ build_busybox_tools() {
         return 0
     fi
 
-    log "Building BusyBox ${BUSYBOX_VERSION} (networking toolset)"
+    log "Building BusyBox ${BUSYBOX_VERSION}"
     local archive="$SOURCE_DIR/busybox-${BUSYBOX_VERSION}.tar.bz2"
     local src="$SOURCE_DIR/busybox"
 
     if [[ ! -f "$archive" ]]; then
-        log "  downloading $(basename "$archive")"
-        wget -q --tries=3 --timeout=30 -O "$archive" \
+        info "downloading $(basename "$archive")"
+        wget -q --tries=3 --timeout=60 -O "$archive" \
             "https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
     else
-        log "  using cached archive $(basename "$archive")"
+        info "using cached $(basename "$archive")"
     fi
 
     rm -rf "$src"
@@ -157,21 +236,27 @@ build_busybox_tools() {
 
     (
         cd "$src"
-        unset CFLAGS CXXFLAGS
+        unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_SYSROOT_DIR PKG_CONFIG_LIBDIR
         make distclean >/dev/null 2>&1 || true
         make defconfig >/dev/null
         # The BusyBox tc applet no longer compiles against modern kernel
         # headers and is not needed on a live image.
         sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
         yes "" | make oldconfig >/dev/null 2>&1 || true
-        log "  compiling BusyBox"
+        info "compiling BusyBox"
         make -j"$THREADS" >/dev/null
     )
 
     install -Dm755 "$src/busybox" "$TARGET_DIR/usr/bin/busybox"
 
-    # Networking applets only; GNU coreutils remain the default commands.
-    local applets=(ip udhcpc ping wget nslookup netstat route ifconfig)
+    # GNU coreutils remain the default; BusyBox adds the applets the live
+    # environment needs (networking, login, logging, device hotplug).
+    local applets=(
+        ip udhcpc ping wget nslookup netstat route ifconfig
+        login getty passwd su sulogin
+        syslogd klogd logread mdev
+        mount umount clear reset sync
+    )
     (
         cd "$TARGET_DIR/usr/bin"
         for applet in "${applets[@]}"; do
@@ -259,6 +344,13 @@ for util in chepm cherryfetch; do
     fi
 done
 
+log "Applying Cherry Linux overlay"
+if [[ -d "$PROJECT_DIR/overlay" ]]; then
+    cp -a "$PROJECT_DIR/overlay/." "$TARGET_DIR/"
+    find "$TARGET_DIR/etc" -type f -name '*.sh' -exec chmod 755 {} +
+    chmod 755 "$TARGET_DIR/etc/rc.shutdown" 2>/dev/null || true
+fi
+
 log "Writing system configuration"
 cat > "$TARGET_DIR/etc/passwd" <<'EOF_PASSWD'
 root:x:0:0:root:/root:/bin/sh
@@ -267,6 +359,10 @@ EOF_PASSWD
 
 cat > "$TARGET_DIR/etc/group" <<'EOF_GROUP'
 root:x:0:
+wheel:x:10:cherry
+video:x:18:cherry
+audio:x:29:cherry
+input:x:33:cherry
 cherry:x:1000:
 EOF_GROUP
 
@@ -277,8 +373,7 @@ EOF_SHADOW
 chmod 600 "$TARGET_DIR/etc/shadow"
 
 cat > "$TARGET_DIR/etc/fstab" <<'EOF_FSTAB'
-tmpfs /run tmpfs defaults 0 0
-tmpfs /tmp tmpfs defaults 0 0
+tmpfs /tmp tmpfs defaults,mode=1777 0 0
 EOF_FSTAB
 
 cat > "$TARGET_DIR/etc/os-release" <<EOF_OS
@@ -392,7 +487,7 @@ if [[ "$ROOTFS_PROFILE" == "minimal" ]]; then
         "$TARGET_DIR/usr/share/man" \
         "$TARGET_DIR/usr/share/info" \
         "$TARGET_DIR/usr/share/doc"
-    find "$TARGET_DIR/usr/lib" -type f -name '*.a' -delete
+    find "$TARGET_DIR/usr/lib" -type f -name '*.a' -delete 2>/dev/null || true
 fi
 
 log "Rootfs build complete: $TARGET_DIR"

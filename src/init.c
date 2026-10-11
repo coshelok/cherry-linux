@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -16,11 +17,35 @@
 #include <termios.h>
 #include <unistd.h>
 
+#define CMDLINE_MAX 4096
+#define LIVE_CONF "/run/cherry/live.conf"
+#define SHUTDOWN_HOOK "/etc/rc.shutdown"
+
+/* Parsed kernel command line options. */
+static int opt_debug;
+static int opt_rescue;
+static char opt_hostname[64];
+
 static void log_msg(const char *level, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
     fprintf(stdout, "[INIT][%s] ", level);
+    vfprintf(stdout, fmt, ap);
+    fputc('\n', stdout);
+    fflush(stdout);
+    va_end(ap);
+}
+
+static void debug_msg(const char *fmt, ...)
+{
+    va_list ap;
+
+    if (!opt_debug)
+        return;
+
+    va_start(ap, fmt);
+    fprintf(stdout, "[INIT][DEBUG] ");
     vfprintf(stdout, fmt, ap);
     fputc('\n', stdout);
     fflush(stdout);
@@ -58,6 +83,164 @@ static int read_first_line(const char *path, char *buf, size_t size)
     if (nl)
         *nl = '\0';
     return 0;
+}
+
+static void parse_cmdline(void)
+{
+    char buf[CMDLINE_MAX];
+    int fd = open("/proc/cmdline", O_RDONLY | O_CLOEXEC);
+
+    if (fd < 0) {
+        log_msg("WARN", "cannot read /proc/cmdline: %s", strerror(errno));
+        return;
+    }
+
+    ssize_t n = read(fd, buf, sizeof(buf) - 1);
+    close(fd);
+
+    if (n <= 0) {
+        log_msg("WARN", "empty kernel command line");
+        return;
+    }
+
+    buf[n] = '\0';
+
+    char *save = NULL;
+    for (char *tok = strtok_r(buf, " \t\r\n", &save); tok;
+         tok = strtok_r(NULL, " \t\r\n", &save)) {
+        if (strcmp(tok, "cherry.debug") == 0) {
+            opt_debug = 1;
+        } else if (strcmp(tok, "single") == 0 ||
+                   strcmp(tok, "rescue") == 0 ||
+                   strcmp(tok, "cherry.rescue") == 0) {
+            opt_rescue = 1;
+        } else if (strncmp(tok, "cherry.hostname=", 16) == 0) {
+            snprintf(opt_hostname, sizeof(opt_hostname), "%s", tok + 16);
+        }
+    }
+}
+
+/*
+ * Load the environment exported by the boot initramfs (CHERRY_LIVE,
+ * CHERRY_PERSIST, ...). Values already present in the environment win.
+ */
+static void read_live_config(void)
+{
+    FILE *fp = fopen(LIVE_CONF, "r");
+
+    if (!fp) {
+        debug_msg("no %s: %s", LIVE_CONF, strerror(errno));
+        return;
+    }
+
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        if (line[0] == '#' || line[0] == '\n')
+            continue;
+
+        char *nl = strchr(line, '\n');
+        if (nl)
+            *nl = '\0';
+
+        char *eq = strchr(line, '=');
+        if (!eq)
+            continue;
+
+        *eq = '\0';
+        const char *key = line;
+        const char *val = eq + 1;
+
+        if (getenv(key) == NULL)
+            setenv(key, val, 1);
+    }
+
+    fclose(fp);
+}
+
+static void mount_tmpfs(const char *target, const char *opts)
+{
+    if (mkdir(target, 0755) < 0 && errno != EEXIST)
+        log_msg("WARN", "mkdir %s: %s", target, strerror(errno));
+
+    if (mount("tmpfs", target, "tmpfs", 0, opts) < 0 && errno != EBUSY)
+        log_msg("WARN", "mount tmpfs on %s: %s", target, strerror(errno));
+}
+
+static void setup_filesystems(void)
+{
+    static const struct {
+        const char *target;
+        const char *fstype;
+        unsigned long flags;
+        const char *data;
+    } mounts[] = {
+        { "/proc", "proc",     MS_NOSUID | MS_NODEV | MS_NOEXEC, NULL },
+        { "/sys",  "sysfs",    MS_NOSUID | MS_NODEV | MS_NOEXEC, NULL },
+        { "/dev",  "devtmpfs", MS_NOSUID,                        "mode=0755" },
+    };
+
+    for (size_t i = 0; i < sizeof(mounts) / sizeof(mounts[0]); ++i) {
+        if (mount(mounts[i].target, mounts[i].target, mounts[i].fstype,
+                  mounts[i].flags, mounts[i].data) < 0 && errno != EBUSY)
+            log_msg("WARN", "mount %s: %s", mounts[i].target,
+                    strerror(errno));
+    }
+
+    mount_tmpfs("/run", "mode=0755");
+    mount_tmpfs("/tmp", "mode=1777");
+    mount_tmpfs("/dev/shm", "mode=1777");
+}
+
+static void run_mdev(void)
+{
+    if (access("/sbin/mdev", X_OK) != 0)
+        return;
+
+    int fd = open("/proc/sys/kernel/hotplug", O_WRONLY | O_CLOEXEC);
+    if (fd >= 0) {
+        (void)write(fd, "/sbin/mdev", 10);
+        close(fd);
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        log_msg("WARN", "fork mdev: %s", strerror(errno));
+        return;
+    }
+
+    if (pid == 0) {
+        char *const argv[] = { "mdev", "-s", NULL };
+        execv("/sbin/mdev", argv);
+        _exit(127);
+    }
+
+    int status;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+        ;
+}
+
+static void run_script(const char *path)
+{
+    if (access(path, X_OK) != 0)
+        return;
+
+    debug_msg("running %s", path);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        log_msg("WARN", "fork %s: %s", path, strerror(errno));
+        return;
+    }
+
+    if (pid == 0) {
+        char *const argv[] = { (char *)path, NULL };
+        execv(path, argv);
+        _exit(127);
+    }
+
+    int status;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+        ;
 }
 
 static int open_console_tty(void)
@@ -236,6 +419,7 @@ static void perform_shutdown(void)
     static const char *const names[] = { "halt", "poweroff", "reboot" };
 
     log_msg("INFO", "Shutdown requested: %s", names[shutdown_request]);
+    run_script(SHUTDOWN_HOOK);
     sync();
 
     if (reboot(actions[shutdown_request]) == 0) {
@@ -280,39 +464,22 @@ static void shell_supervisor(void)
 
 static void run_network_setup(void)
 {
-    const char *script = "/usr/lib/cherry/net-up";
-
-    if (access(script, X_OK) != 0)
-        return;
-
-    pid_t pid = fork();
-    if (pid < 0) {
-        log_msg("WARN", "fork network setup: %s", strerror(errno));
-        return;
-    }
-
-    if (pid == 0) {
-        char *const argv[] = { (char *)script, NULL };
-        execv(script, argv);
-        _exit(127);
-    }
-
-    int status;
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno != EINTR)
-            break;
-    }
+    run_script("/usr/lib/cherry/net-up");
 }
 
 static void setup_environment(void)
 {
-    if (sethostname("cherrylinux", strlen("cherrylinux")) < 0)
+    const char *hostname = opt_hostname[0] ? opt_hostname : "cherrylinux";
+
+    if (sethostname(hostname, strlen(hostname)) < 0)
         log_msg("WARN", "sethostname failed: %s", strerror(errno));
 
     setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin", 1);
     setenv("HOME", "/root", 1);
     setenv("USER", "root", 1);
+    setenv("LOGNAME", "root", 1);
     setenv("SHELL", "/bin/sh", 1);
+    setenv("TERM", "linux", 0);
     setenv("PS1", "cherry:\\w# ", 1);
 }
 
@@ -321,12 +488,24 @@ int main(void)
     if (getpid() != 1)
         fatal("Cherry runtime init must run as PID 1 (got %ld)", (long)getpid());
 
+    parse_cmdline();
+
     log_msg("INFO", "Starting Cherry Linux runtime");
+    read_live_config();
+    setup_filesystems();
+    run_mdev();
     setup_environment();
     install_shutdown_handlers();
 
-    log_msg("INFO", "Configuring network");
-    run_network_setup();
+    if (opt_rescue) {
+        log_msg("INFO", "Rescue mode: skipping network and rc.local");
+    } else {
+        log_msg("INFO", "Configuring network");
+        run_network_setup();
+
+        debug_msg("running /etc/rc.local");
+        run_script("/etc/rc.local");
+    }
 
     log_msg("INFO", "System ready");
     printf("\n  Welcome to Cherry Linux\n");

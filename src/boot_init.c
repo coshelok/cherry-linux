@@ -22,6 +22,17 @@
 
 #define MEDIA_WAIT_MS 10000
 #define OVERLAY_SIZE "50%"
+#define CMDLINE_MAX 4096
+#define PERSIST_MNT "/run/cherry/persist"
+#define LIVE_CONF "/run/cherry/live.conf"
+
+/* Parsed kernel command line options. */
+static int opt_debug;
+static int opt_persist;
+static char opt_persist_spec[256];
+
+/* Set when a persistence store was successfully mounted. */
+static int persist_active;
 
 static char rootfs_loop_path[PATH_MAX];
 
@@ -30,6 +41,21 @@ static void log_msg(const char *level, const char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     fprintf(stdout, "[BOOT][%s] ", level);
+    vfprintf(stdout, fmt, ap);
+    fputc('\n', stdout);
+    fflush(stdout);
+    va_end(ap);
+}
+
+static void debug_msg(const char *fmt, ...)
+{
+    va_list ap;
+
+    if (!opt_debug)
+        return;
+
+    va_start(ap, fmt);
+    fprintf(stdout, "[BOOT][DEBUG] ");
     vfprintf(stdout, fmt, ap);
     fputc('\n', stdout);
     fflush(stdout);
@@ -109,35 +135,33 @@ static int try_mount_iso(const char *dev)
     struct stat st;
 
     if (stat(dev, &st) < 0) {
-        log_msg("DEBUG", "stat %s failed: %s", dev, strerror(errno));
+        debug_msg("stat %s failed: %s", dev, strerror(errno));
         return -1;
     }
 
     if (!S_ISBLK(st.st_mode)) {
-        log_msg("DEBUG", "%s exists but is not a block device", dev);
+        debug_msg("%s exists but is not a block device", dev);
         return -1;
     }
 
-    log_msg("DEBUG", "Trying ISO9660 mount on %s", dev);
+    debug_msg("Trying ISO9660 mount on %s", dev);
 
     (void)umount2("/run/cherry/bootmnt", MNT_DETACH);
 
     if (mount(dev, "/run/cherry/bootmnt", "iso9660",
               MS_RDONLY | MS_NODEV | MS_NOSUID | MS_NOEXEC, NULL) < 0) {
-        log_msg("DEBUG", "mount %s failed: %s", dev, strerror(errno));
+        debug_msg("mount %s failed: %s", dev, strerror(errno));
         return -1;
     }
 
-    log_msg("DEBUG", "ISO9660 mounted from %s", dev);
+    debug_msg("ISO9660 mounted from %s", dev);
 
     if (access("/run/cherry/bootmnt/boot/rootfs.sfs", R_OK) == 0) {
         log_msg("INFO", "Boot media found on %s", dev);
         return 0;
     }
 
-    log_msg("DEBUG",
-            "%s mounted, but /boot/rootfs.sfs is missing",
-            dev);
+    debug_msg("%s mounted, but /boot/rootfs.sfs is missing", dev);
 
     (void)umount2("/run/cherry/bootmnt", MNT_DETACH);
     return -1;
@@ -154,9 +178,7 @@ static void find_boot_media(void)
         DIR *dir = opendir("/sys/class/block");
 
         if (!dir) {
-            log_msg("DEBUG",
-                    "cannot open /sys/class/block: %s",
-                    strerror(errno));
+            debug_msg("cannot open /sys/class/block: %s", strerror(errno));
         } else {
             struct dirent *entry;
 
@@ -172,7 +194,7 @@ static void find_boot_media(void)
                 if (n < 0 || (size_t)n >= sizeof(dev))
                     continue;
 
-                log_msg("DEBUG", "block device: %s", entry->d_name);
+                debug_msg("block device candidate: %s", entry->d_name);
 
                 if (try_mount_iso(dev) == 0) {
                     closedir(dir);
@@ -187,6 +209,129 @@ static void find_boot_media(void)
     }
 
     fatal("could not find an ISO9660 device containing /boot/rootfs.sfs");
+}
+
+static void parse_cmdline(void)
+{
+    char buf[CMDLINE_MAX];
+    ssize_t n;
+    int fd = open("/proc/cmdline", O_RDONLY | O_CLOEXEC);
+
+    if (fd < 0) {
+        log_msg("WARN", "cannot read /proc/cmdline: %s", strerror(errno));
+        return;
+    }
+
+    n = read(fd, buf, sizeof(buf) - 1);
+    close(fd);
+
+    if (n <= 0) {
+        log_msg("WARN", "empty kernel command line");
+        return;
+    }
+
+    buf[n] = '\0';
+
+    char *save = NULL;
+    for (char *tok = strtok_r(buf, " \t\r\n", &save); tok;
+         tok = strtok_r(NULL, " \t\r\n", &save)) {
+        if (strcmp(tok, "persistent") == 0 ||
+            strcmp(tok, "cherry.persist") == 0 ||
+            strcmp(tok, "persist") == 0) {
+            opt_persist = 1;
+        } else if (strncmp(tok, "cherry.persist=", 15) == 0) {
+            opt_persist = 1;
+            snprintf(opt_persist_spec, sizeof(opt_persist_spec),
+                     "%s", tok + 15);
+        } else if (strcmp(tok, "cherry.debug") == 0) {
+            opt_debug = 1;
+        }
+    }
+}
+
+/*
+ * Resolve the persistence store into a device path. The store may be given
+ * explicitly as a device, a UUID= or LABEL= spec, or left to autodetection,
+ * in which case the conventional "cherry-persist" label is used.
+ */
+static void persist_device_path(char *out, size_t outsz)
+{
+    const char *spec = opt_persist_spec;
+
+    if (spec[0] == '\0') {
+        snprintf(out, outsz, "/dev/disk/by-label/cherry-persist");
+        return;
+    }
+
+    if (strncmp(spec, "/dev/", 5) == 0) {
+        snprintf(out, outsz, "%s", spec);
+    } else if (strncmp(spec, "UUID=", 5) == 0) {
+        snprintf(out, outsz, "/dev/disk/by-uuid/%s", spec + 5);
+    } else if (strncmp(spec, "LABEL=", 6) == 0) {
+        snprintf(out, outsz, "/dev/disk/by-label/%s", spec + 6);
+    } else {
+        snprintf(out, outsz, "/dev/disk/by-label/%s", spec);
+    }
+}
+
+static int mount_persist_store(const char *dev)
+{
+    static const char *const fstypes[] = {
+        "ext4", "ext3", "ext2", "f2fs", "xfs", "btrfs", "vfat", NULL
+    };
+
+    if (mount(dev, PERSIST_MNT, NULL,
+              MS_NOSUID | MS_NODEV, NULL) == 0)
+        return 0;
+
+    for (size_t i = 0; fstypes[i] != NULL; ++i) {
+        if (mount(dev, PERSIST_MNT, fstypes[i],
+                  MS_NOSUID | MS_NODEV, NULL) == 0)
+            return 0;
+    }
+
+    return -1;
+}
+
+static void mount_persistence(void)
+{
+    if (!opt_persist) {
+        debug_msg("persistence not requested");
+        return;
+    }
+
+    char dev[PATH_MAX];
+    struct stat st;
+
+    persist_device_path(dev, sizeof(dev));
+
+    if (stat(dev, &st) < 0) {
+        log_msg("WARN", "persistence device %s not found: %s",
+                dev, strerror(errno));
+        return;
+    }
+
+    mkdir_required(PERSIST_MNT, 0755);
+
+    if (mount_persist_store(dev) < 0) {
+        log_msg("WARN", "cannot mount persistence store %s: %s",
+                dev, strerror(errno));
+        return;
+    }
+
+    if (mkdir(PERSIST_MNT "/upper", 0755) < 0 && errno != EEXIST) {
+        log_msg("WARN", "cannot create upper dir: %s", strerror(errno));
+        (void)umount2(PERSIST_MNT, MNT_DETACH);
+        return;
+    }
+    if (mkdir(PERSIST_MNT "/work", 0755) < 0 && errno != EEXIST) {
+        log_msg("WARN", "cannot create work dir: %s", strerror(errno));
+        (void)umount2(PERSIST_MNT, MNT_DETACH);
+        return;
+    }
+
+    persist_active = 1;
+    log_msg("INFO", "Persistence enabled on %s", dev);
 }
 
 static void attach_rootfs_loop(const char *image)
@@ -243,26 +388,56 @@ static void attach_rootfs_loop(const char *image)
 
 static void build_overlay_root(void)
 {
+    char upperdir[PATH_MAX];
+    char workdir[PATH_MAX];
+    char options[PATH_MAX * 2 + 64];
+
     mkdir_required("/new_root", 0755);
     mkdir_required("/run/cherry/airootfs", 0755);
-    mkdir_required("/run/cherry/cowspace", 0755);
-
-    mount_required("tmpfs", "/run/cherry/cowspace", "tmpfs", 0,
-                   "size=" OVERLAY_SIZE ",mode=0755");
-
-    mkdir_required("/run/cherry/cowspace/upper", 0755);
-    mkdir_required("/run/cherry/cowspace/work", 0755);
 
     mount_required(rootfs_loop_path, "/run/cherry/airootfs",
                    "squashfs", MS_RDONLY, NULL);
 
-    const char *options =
-        "lowerdir=/run/cherry/airootfs,"
-        "upperdir=/run/cherry/cowspace/upper,"
-        "workdir=/run/cherry/cowspace/work";
+    if (persist_active) {
+        snprintf(upperdir, sizeof(upperdir), "%s/upper", PERSIST_MNT);
+        snprintf(workdir, sizeof(workdir), "%s/work", PERSIST_MNT);
+        log_msg("INFO", "Using persistent overlay upper directory");
+    } else {
+        mkdir_required("/run/cherry/cowspace", 0755);
+        mount_required("tmpfs", "/run/cherry/cowspace", "tmpfs", 0,
+                       "size=" OVERLAY_SIZE ",mode=0755");
+        mkdir_required("/run/cherry/cowspace/upper", 0755);
+        mkdir_required("/run/cherry/cowspace/work", 0755);
+        snprintf(upperdir, sizeof(upperdir),
+                 "/run/cherry/cowspace/upper");
+        snprintf(workdir, sizeof(workdir), "/run/cherry/cowspace/work");
+    }
+
+    snprintf(options, sizeof(options),
+             "lowerdir=/run/cherry/airootfs,upperdir=%s,workdir=%s",
+             upperdir, workdir);
+
     mount_required("overlay", "/new_root", "overlay", 0, options);
 
-    log_msg("INFO", "Overlay root is ready (SquashFS lower + tmpfs upper)");
+    log_msg("INFO", "Overlay root is ready (%s upper)",
+            persist_active ? "persistent" : "tmpfs");
+}
+
+static void write_live_config(void)
+{
+    int fd = open(LIVE_CONF, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+
+    if (fd < 0) {
+        log_msg("WARN", "cannot write %s: %s", LIVE_CONF, strerror(errno));
+        return;
+    }
+
+    dprintf(fd,
+            "# Generated by Cherry Linux boot init\n"
+            "CHERRY_LIVE=1\n"
+            "CHERRY_PERSIST=%d\n",
+            persist_active);
+    close(fd);
 }
 
 static void move_mount_tree(const char *old_path, const char *new_path)
@@ -409,6 +584,8 @@ int main(void)
     mkdir_required("/run/cherry", 0755);
     mkdir_required("/run/cherry/bootmnt", 0755);
 
+    parse_cmdline();
+
     mknod_if_missing("/dev/console", S_IFCHR | 0600, 5, 1);
     mknod_if_missing("/dev/tty",     S_IFCHR | 0666, 5, 0);
     mknod_if_missing("/dev/tty0",    S_IFCHR | 0620, 4, 0);
@@ -424,7 +601,9 @@ int main(void)
 
     find_boot_media();
     attach_rootfs_loop("/run/cherry/bootmnt/boot/rootfs.sfs");
+    mount_persistence();
     build_overlay_root();
+    write_live_config();
     switch_root();
     exec_runtime_init();
 
