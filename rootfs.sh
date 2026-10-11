@@ -344,9 +344,26 @@ for util in chepm cherryfetch; do
     fi
 done
 
+log "Preparing overlay tree"
+overlay_dir="$PROJECT_DIR/overlay"
+mkdir -p "$overlay_dir" \
+    "$overlay_dir/etc" \
+    "$overlay_dir/home/cherry" \
+    "$overlay_dir/root" \
+    "$overlay_dir/usr/local/bin" \
+    "$overlay_dir/usr/local/sbin"
+
 log "Applying Cherry Linux overlay"
-if [[ -d "$PROJECT_DIR/overlay" ]]; then
-    cp -a "$PROJECT_DIR/overlay/." "$TARGET_DIR/"
+if [[ -d "$overlay_dir" ]]; then
+    (
+        cd "$overlay_dir"
+        shopt -s dotglob nullglob
+        for f in *; do
+            [[ -e "$f" ]] || continue
+            [[ "$f" == "README.md" ]] && continue
+            cp -a "$f" "$TARGET_DIR/"
+        done
+    )
     find "$TARGET_DIR/etc" -type f -name '*.sh' -exec chmod 755 {} +
     chmod 755 "$TARGET_DIR/etc/rc.shutdown" 2>/dev/null || true
 fi

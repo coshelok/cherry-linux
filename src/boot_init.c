@@ -17,6 +17,7 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <sys/wait.h>
 #include <linux/magic.h>
 #include <unistd.h>
 
@@ -250,27 +251,135 @@ static void parse_cmdline(void)
 }
 
 /*
- * Resolve the persistence store into a device path. The store may be given
- * explicitly as a device, a UUID= or LABEL= spec, or left to autodetection,
- * in which case the conventional "cherry-persist" label is used.
+ * Run a command and capture its stdout. Returns 0 when the command exited
+ * successfully and produced output; the first line is NUL-terminated in
+ * `out`. Returns -1 otherwise.
+ */
+static int run_capture(char *const argv[], char *out, size_t outsz)
+{
+    int pipefd[2];
+
+    if (pipe(pipefd) < 0)
+        return -1;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return -1;
+    }
+
+    if (pid == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+        execv(argv[0], argv);
+        _exit(127);
+    }
+
+    close(pipefd[1]);
+
+    size_t total = 0;
+    while (total + 1 < outsz) {
+        ssize_t n = read(pipefd[0], out + total, outsz - 1 - total);
+        if (n > 0) {
+            total += (size_t)n;
+        } else if (n == 0) {
+            break;
+        } else if (errno != EINTR) {
+            break;
+        }
+    }
+    close(pipefd[0]);
+    out[total] = '\0';
+
+    int status;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+        ;
+
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        return -1;
+
+    return out[0] ? 0 : -1;
+}
+
+/*
+ * Find a filesystem whose LABEL or UUID field equals `value` by probing the
+ * devices with the BusyBox blkid shipped in the initramfs. The boot stage has
+ * no udev/mdev, so /dev/disk/by-* symlinks do not exist; the block devices
+ * themselves are created by devtmpfs. On success stores "/dev/..." in `out`.
+ */
+static int find_blkid(const char *field, const char *value,
+                      char *out, size_t outsz)
+{
+    char buf[32768];
+    char needle[64];
+
+    if (access("/bin/busybox", X_OK) != 0) {
+        debug_msg("no /bin/busybox in initramfs; autodetect unavailable");
+        return -1;
+    }
+
+    char *const argv[] = { (char *)"/bin/busybox", (char *)"blkid", NULL };
+    if (run_capture(argv, buf, sizeof(buf)) < 0) {
+        debug_msg("blkid returned no output");
+        return -1;
+    }
+
+    snprintf(needle, sizeof(needle), " %s=\"%s\"", field, value);
+
+    char *save = NULL;
+    for (char *line = strtok_r(buf, "\n", &save); line;
+         line = strtok_r(NULL, "\n", &save)) {
+        char *colon = strchr(line, ':');
+        if (!colon)
+            continue;
+        *colon = '\0';
+        if (line[0] && strstr(colon + 1, needle)) {
+            snprintf(out, outsz, "%s", line);
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+/*
+ * Resolve the persistence store into a raw device path. The store may be
+ * given explicitly as a device, a UUID= or LABEL= spec, or left to
+ * autodetection, in which case the conventional "cherry-persist" label is
+ * used. Empty output means no suitable device was found.
  */
 static void persist_device_path(char *out, size_t outsz)
 {
     const char *spec = opt_persist_spec;
 
     if (spec[0] == '\0') {
-        snprintf(out, outsz, "/dev/disk/by-label/cherry-persist");
+        if (find_blkid("LABEL", "cherry-persist", out, outsz) == 0)
+            debug_msg("persistence store by label: %s", out);
+        else
+            debug_msg("no device labelled cherry-persist found");
         return;
     }
 
     if (strncmp(spec, "/dev/", 5) == 0) {
         snprintf(out, outsz, "%s", spec);
     } else if (strncmp(spec, "UUID=", 5) == 0) {
-        snprintf(out, outsz, "/dev/disk/by-uuid/%s", spec + 5);
+        if (find_blkid("UUID", spec + 5, out, outsz) != 0) {
+            log_msg("WARN", "no device found with UUID %s", spec + 5);
+            out[0] = '\0';
+        }
     } else if (strncmp(spec, "LABEL=", 6) == 0) {
-        snprintf(out, outsz, "/dev/disk/by-label/%s", spec + 6);
+        if (find_blkid("LABEL", spec + 6, out, outsz) != 0) {
+            log_msg("WARN", "no device found with label %s", spec + 6);
+            out[0] = '\0';
+        }
     } else {
-        snprintf(out, outsz, "/dev/disk/by-label/%s", spec);
+        /* A bare name without a /dev/ prefix is treated as a label. */
+        if (find_blkid("LABEL", spec, out, outsz) != 0) {
+            log_msg("WARN", "no device found with label %s", spec);
+            out[0] = '\0';
+        }
     }
 }
 
@@ -304,6 +413,11 @@ static void mount_persistence(void)
     struct stat st;
 
     persist_device_path(dev, sizeof(dev));
+
+    if (dev[0] == '\0') {
+        log_msg("WARN", "persistence store not found; continuing with volatile overlay");
+        return;
+    }
 
     if (stat(dev, &st) < 0) {
         log_msg("WARN", "persistence device %s not found: %s",

@@ -170,11 +170,18 @@ log "Packing initramfs"
 rm -f "$INITRAMFS"
 INITRAMFS_STAGE="$BUILD_DIR/initramfs-stage"
 rm -rf "$INITRAMFS_STAGE"
-mkdir -p "$INITRAMFS_STAGE"
+mkdir -p "$INITRAMFS_STAGE/bin"
 install -Dm755 "$BOOT_INIT_BINARY" "$INITRAMFS_STAGE/init"
+cpio_files=(init)
+# The bootstrap init needs blkid to resolve the persistence store by
+# label/UUID before the rootfs is live (no udev/mdev symlinks exist yet).
+if [[ -x "$ROOTFS_DIR/usr/bin/busybox" ]]; then
+    install -Dm755 "$ROOTFS_DIR/usr/bin/busybox" "$INITRAMFS_STAGE/bin/busybox"
+    cpio_files+=(bin bin/busybox)
+fi
 (
     cd "$INITRAMFS_STAGE"
-    printf '%s\n' init | cpio -o -H newc --owner=0:0 --reproducible
+    printf '%s\n' "${cpio_files[@]}" | cpio -o -H newc --owner=0:0 --reproducible
 ) | gzip -9 -n > "$INITRAMFS"
 rm -rf "$INITRAMFS_STAGE" "$BOOT_INIT_BINARY" "$RUNTIME_INIT_BINARY"
 
