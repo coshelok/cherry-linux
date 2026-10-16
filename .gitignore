@@ -4,6 +4,8 @@
 
 /build/
 
+/kernel/
+
 init.cpio.gz
 
 rootfs.sfs

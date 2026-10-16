@@ -10,15 +10,40 @@ ROOTFS_PROFILE="${ROOTFS_PROFILE:-full}"
 ENABLE_NET="${ENABLE_NET:-1}"
 ENABLE_BUSYBOX="${ENABLE_BUSYBOX:-0}"
 BUSYBOX_VERSION="${BUSYBOX_VERSION:-1.36.1}"
+BUSYBOX_SHA256="${BUSYBOX_SHA256:-b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314}"
 
 log()  { printf '\033[1;34m[ROOTFS]\033[0m %s\n' "$*"; }
 info() { printf '\033[1;34m[ROOTFS]\033[0m   %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 
-for cmd in gcc make wget tar file ldd find awk cut grep install tr sed sort basename; do
+for cmd in gcc make wget tar file ldd find awk cut grep install tr sed sort basename sha256sum; do
     need "$cmd"
 done
+
+verify_sha256() {
+    local file="$1" expected="$2"
+
+    printf '%s  %s\n' "$expected" "$file" | sha256sum -c --status - \
+        || die "Checksum mismatch for $(basename "$file"); remove it and retry"
+}
+
+# Download url to dest unless a valid copy is already cached there.
+fetch_source() {
+    local url="$1" dest="$2" sha="$3"
+
+    if [[ -f "$dest" ]]; then
+        verify_sha256 "$dest" "$sha"
+        info "using cached $(basename "$dest")"
+        return 0
+    fi
+
+    log "Downloading $(basename "$dest")"
+    wget -q --tries=3 --timeout=60 -O "$dest.part" "$url" \
+        || die "$(basename "$dest"): download failed: $url"
+    mv "$dest.part" "$dest"
+    verify_sha256 "$dest" "$sha"
+}
 
 VERSION_FILE="$PROJECT_DIR/VERSION"
 if [[ -z "${CHERRY_VERSION:-}" ]]; then
@@ -72,21 +97,14 @@ export PATH="$TARGET_DIR/usr/bin:$TARGET_DIR/usr/sbin:$PATH"
 # The build system is detected from the extracted sources.
 # ---------------------------------------------------------------------------
 build_package() {
-    local name="$1" url="$2"
-    shift 2
+    local name="$1" url="$2" sha="$3"
+    shift 3
     local -a extra=("$@")
     local archive="$SOURCE_DIR/$(basename "$url")"
     local src="$SOURCE_DIR/$name"
     local pkglog="$BUILD_DIR/pkg-$name.log"
 
-    if [[ ! -f "$archive" ]]; then
-        log "Downloading $(basename "$url")"
-        wget -q --tries=3 --timeout=60 -O "$archive.part" "$url" \
-            || die "$name: download failed: $url"
-        mv "$archive.part" "$archive"
-    else
-        info "using cached $(basename "$archive")"
-    fi
+    fetch_source "$url" "$archive" "$sha"
 
     if [[ ! -d "$src" ]]; then
         mkdir -p "$src"
@@ -151,40 +169,38 @@ build_package() {
 # ---------------------------------------------------------------------------
 # Base GNU userland.
 # ---------------------------------------------------------------------------
+# Package sources are pinned by sha256; update the hash whenever the
+# version/URL changes.
 PKGS=(
-    "bash|https://ftp.gnu.org/gnu/bash/bash-5.2.32.tar.gz|--without-curses"
-    "coreutils|https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz|--enable-install-program=hostname"
-    "grep|https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz|"
-    "sed|https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz|"
-    "gawk|https://ftp.gnu.org/gnu/gawk/gawk-5.3.0.tar.xz|"
-    "findutils|https://ftp.gnu.org/gnu/findutils/findutils-4.10.0.tar.xz|"
-    "diffutils|https://ftp.gnu.org/gnu/diffutils/diffutils-3.11.tar.xz|"
-    "tar|https://ftp.gnu.org/gnu/tar/tar-1.35.tar.xz|--without-xattrs --without-posix-acls"
-    "gzip|https://ftp.gnu.org/gnu/gzip/gzip-1.13.tar.xz|"
-    "bzip2|https://sourceware.org/ftp/bzip2/bzip2-1.0.8.tar.gz|"
-    "xz|https://github.com/tukaani-project/xz/releases/download/v5.6.3/xz-5.6.3.tar.xz|"
+    "bash|https://ftp.gnu.org/gnu/bash/bash-5.2.32.tar.gz|d3ef80d2b67d8cbbe4d3265c63a72c46f9b278ead6e0e06d61801b58f23f50b5|--without-curses"
+    "coreutils|https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz|cd328edeac92f6a665de9f323c93b712af1858bc2e0d88f3f7100469470a1b8a|--enable-install-program=hostname"
+    "grep|https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz|1db2aedde89d0dea42b16d9528f894c8d15dae4e190b59aecc78f5a951276eab|"
+    "sed|https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz|6e226b732e1cd739464ad6862bd1a1aba42d7982922da7a53519631d24975181|"
+    "gawk|https://ftp.gnu.org/gnu/gawk/gawk-5.3.0.tar.xz|ca9c16d3d11d0ff8c69d79dc0b47267e1329a69b39b799895604ed447d3ca90b|"
+    "findutils|https://ftp.gnu.org/gnu/findutils/findutils-4.10.0.tar.xz|1387e0b67ff247d2abde998f90dfbf70c1491391a59ddfecb8ae698789f0a4f5|"
+    "diffutils|https://ftp.gnu.org/gnu/diffutils/diffutils-3.11.tar.xz|a73ef05fe37dd585f7d87068e4a0639760419f810138bd75c61ddaa1f9e2131e|"
+    "tar|https://ftp.gnu.org/gnu/tar/tar-1.35.tar.xz|4d62ff37342ec7aed748535323930c7cf94acf71c3591882b26a7ea50f3edc16|--without-xattrs --without-posix-acls"
+    "gzip|https://ftp.gnu.org/gnu/gzip/gzip-1.13.tar.xz|7454eb6935db17c6655576c2e1b0fabefd38b4d0936e0f87f48cd062ce91a057|"
+    "bzip2|https://sourceware.org/ftp/bzip2/bzip2-1.0.8.tar.gz|ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269|"
+    "xz|https://github.com/tukaani-project/xz/releases/download/v5.6.3/xz-5.6.3.tar.xz|db0590629b6f0fa36e74aea5f9731dc6f8df068ce7b7bafa45301832a5eebc3a|"
 )
 
 if [[ "$ROOTFS_PROFILE" != "minimal" ]]; then
     PKGS+=(
-        "make|https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz|"
-        "patch|https://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.gz|"
+        "make|https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz|dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3|"
+        "patch|https://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.gz|8cf86e00ad3aaa6d26aca30640e86b0e3e1f395ed99f189b06d4c9f74bc58a4e|"
     )
 fi
 
 for entry in "${PKGS[@]}"; do
-    IFS='|' read -r name url conf <<< "$entry"
+    IFS='|' read -r name url sha conf <<< "$entry"
     log "Building $name"
 
     if [[ "$name" == "bzip2" ]]; then
         # bzip2 has no configure script and a custom install target.
         src="$SOURCE_DIR/bzip2"
         archive="$SOURCE_DIR/$(basename "$url")"
-        if [[ ! -f "$archive" ]]; then
-            wget -q --tries=3 --timeout=60 -O "$archive.part" "$url" \
-                || die "bzip2: download failed"
-            mv "$archive.part" "$archive"
-        fi
+        fetch_source "$url" "$archive" "$sha"
         if [[ ! -d "$src" ]]; then
             mkdir -p "$src"
             tar -xf "$archive" -C "$src" --strip-components=1
@@ -199,7 +215,7 @@ for entry in "${PKGS[@]}"; do
     fi
 
     read -r -a conf_args <<< "$conf"
-    build_package "$name" "$url" "${conf_args[@]}"
+    build_package "$name" "$url" "$sha" "${conf_args[@]}"
 done
 
 log "Creating usr-merge layout"
@@ -222,13 +238,8 @@ build_busybox_tools() {
     local archive="$SOURCE_DIR/busybox-${BUSYBOX_VERSION}.tar.bz2"
     local src="$SOURCE_DIR/busybox"
 
-    if [[ ! -f "$archive" ]]; then
-        info "downloading $(basename "$archive")"
-        wget -q --tries=3 --timeout=60 -O "$archive" \
-            "https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
-    else
-        info "using cached $(basename "$archive")"
-    fi
+    fetch_source "https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2" \
+        "$archive" "$BUSYBOX_SHA256"
 
     rm -rf "$src"
     mkdir -p "$src"

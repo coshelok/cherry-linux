@@ -13,10 +13,19 @@ STAGING_DIR="${STAGING_DIR:-$BUILD_DIR/iso-staging}"
 BOOT_INIT_SOURCE="$PROJECT_DIR/src/boot_init.c"
 RUNTIME_INIT_SOURCE="$PROJECT_DIR/src/init.c"
 ROOTFS_SCRIPT="$PROJECT_DIR/rootfs.sh"
-KERNEL_DIR="$PROJECT_DIR/kernel/linux-7.0.10"
+KERNEL_VERSION="${KERNEL_VERSION:-7.0.10}"
+KERNEL_DIR_DEFAULT="$PROJECT_DIR/kernel/linux-$KERNEL_VERSION"
+KERNEL_DIR="${KERNEL_DIR:-$KERNEL_DIR_DEFAULT}"
+KERNEL_TARBALL_URL="${KERNEL_TARBALL_URL:-https://cdn.kernel.org/pub/linux/kernel/v${KERNEL_VERSION%%.*}.x/linux-${KERNEL_VERSION}.tar.xz}"
+KERNEL_TARBALL_SHA256="${KERNEL_TARBALL_SHA256:-094977eb62c20e3d1939fe81a92958a1f987f339446e532fa86963b2804e32dc}"
 KERNEL_CONFIG="$PROJECT_DIR/cherry.config"
 KERNEL_IMAGE="$KERNEL_DIR/arch/x86/boot/bzImage"
 LIMINE_DIR="$PROJECT_DIR/tools/limine-src"
+
+SQUASHFS_TOOLS_VERSION="4.6.1"
+SQUASHFS_TOOLS_SHA256="9c4974e07c61547dae14af4ed1f358b7d04618ae194e54d6be72ee126f0d2f53"
+XORRISO_VERSION="1.5.6.pl02"
+XORRISO_SHA256="786f9f5df9865cc5b0c1fecee3d2c0f5e04cab8c9a859bd1c9c7ccd4964fdae1"
 
 ENABLE_BUSYBOX="${ENABLE_BUSYBOX:-0}"
 ENABLE_NET="${ENABLE_NET:-1}"
@@ -27,6 +36,30 @@ export ENABLE_BUSYBOX ENABLE_NET
 log()  { printf '\033[1;34m[BUILD]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
+
+verify_sha256() {
+    local file="$1" expected="$2"
+
+    printf '%s  %s\n' "$expected" "$file" | sha256sum -c --status - \
+        || die "Checksum mismatch for $(basename "$file"); remove it and retry"
+}
+
+# Download url to dest unless a valid copy is already cached there.
+fetch_source() {
+    local url="$1" dest="$2" sha="$3"
+
+    if [[ -f "$dest" ]]; then
+        verify_sha256 "$dest" "$sha"
+        log "Using cached $(basename "$dest")"
+        return 0
+    fi
+
+    log "Downloading $(basename "$dest")"
+    wget -q --tries=3 --timeout=60 -O "$dest.part" "$url" \
+        || die "$(basename "$dest"): download failed: $url"
+    mv "$dest.part" "$dest"
+    verify_sha256 "$dest" "$sha"
+}
 
 VERSION_FILE="$PROJECT_DIR/VERSION"
 [[ -f "$VERSION_FILE" ]] || die "Missing version file: $VERSION_FILE"
@@ -40,24 +73,34 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for cmd in gcc cpio make tar wget nproc chmod cp rm find install tr; do
+for cmd in gcc cpio make tar wget nproc chmod cp rm find install tr sha256sum; do
     need "$cmd"
 done
 
 [[ -f "$ROOTFS_SCRIPT" ]] || die "Missing $ROOTFS_SCRIPT"
 [[ -f "$BOOT_INIT_SOURCE" ]] || die "Missing $BOOT_INIT_SOURCE"
 [[ -f "$RUNTIME_INIT_SOURCE" ]] || die "Missing $RUNTIME_INIT_SOURCE"
-[[ -d "$KERNEL_DIR" ]] || die "Missing kernel source tree: $KERNEL_DIR"
 [[ -f "$KERNEL_CONFIG" ]] || die "Missing kernel config: $KERNEL_CONFIG"
 [[ -x "$LIMINE_DIR/limine" ]] || die "Missing Limine executable: $LIMINE_DIR/limine"
 [[ -f "$LIMINE_DIR/limine-bios.sys" ]] || die "Missing Limine BIOS binary"
 [[ -f "$LIMINE_DIR/limine-bios-cd.bin" ]] || die "Missing Limine BIOS CD binary"
 [[ -f "$LIMINE_DIR/limine-uefi-cd.bin" ]] || die "Missing Limine UEFI CD binary"
 
-mkdir -p "$BUILD_DIR" "$HOST_TOOLS_DIR/bin" "$SOURCES_DIR"
+mkdir -p "$BUILD_DIR" "$HOST_TOOLS_DIR/bin" "$HOST_TOOLS_DIR/src" "$SOURCES_DIR"
 export PATH="$HOST_TOOLS_DIR/bin:$PATH"
 
 build_kernel() {
+    if [[ ! -d "$KERNEL_DIR" ]]; then
+        [[ "$KERNEL_DIR" == "$KERNEL_DIR_DEFAULT" ]] || \
+            die "KERNEL_DIR=$KERNEL_DIR does not exist (auto-download supports only the default path)"
+
+        log "Kernel source tree not found; fetching Linux $KERNEL_VERSION"
+        local tarball="$SOURCES_DIR/linux-$KERNEL_VERSION.tar.xz"
+        fetch_source "$KERNEL_TARBALL_URL" "$tarball" "$KERNEL_TARBALL_SHA256"
+        mkdir -p "$(dirname "$KERNEL_DIR")"
+        tar -xf "$tarball" -C "$(dirname "$KERNEL_DIR")"
+    fi
+
     log "Installing Cherry kernel config"
     cp "$KERNEL_CONFIG" "$KERNEL_DIR/.config"
 
@@ -75,17 +118,15 @@ build_mksquashfs() {
         return
     fi
 
-    log "mksquashfs not found; building SquashFS tools 4.6.1 in $HOST_TOOLS_DIR"
-    local src_root="$HOST_TOOLS_DIR/src/squashfs-tools-4.6.1"
-    local archive="$HOST_TOOLS_DIR/src/squashfs-tools-4.6.1.tar.gz"
+    log "mksquashfs not found; building SquashFS tools $SQUASHFS_TOOLS_VERSION in $HOST_TOOLS_DIR"
+    local src_root="$HOST_TOOLS_DIR/src/squashfs-tools-$SQUASHFS_TOOLS_VERSION"
+    local archive="$HOST_TOOLS_DIR/src/squashfs-tools-$SQUASHFS_TOOLS_VERSION.tar.gz"
 
-    mkdir -p "$(dirname "$archive")"
-    wget -q --tries=3 --timeout=30 \
-        "https://github.com/plougher/squashfs-tools/archive/refs/tags/4.6.1.tar.gz" \
-        -O "$archive"
+    fetch_source \
+        "https://github.com/plougher/squashfs-tools/archive/refs/tags/$SQUASHFS_TOOLS_VERSION.tar.gz" \
+        "$archive" "$SQUASHFS_TOOLS_SHA256"
 
     rm -rf "$src_root"
-    mkdir -p "$HOST_TOOLS_DIR/src"
     tar -xf "$archive" -C "$HOST_TOOLS_DIR/src"
 
     make -C "$src_root/squashfs-tools" \
@@ -102,14 +143,12 @@ build_xorriso() {
         return
     fi
 
-    log "xorriso not found; building xorriso 1.5.6.pl02 in $HOST_TOOLS_DIR"
+    log "xorriso not found; building xorriso $XORRISO_VERSION in $HOST_TOOLS_DIR"
     local src_dir="$HOST_TOOLS_DIR/src/xorriso"
-    local archive="$HOST_TOOLS_DIR/src/xorriso-1.5.6.pl02.tar.gz"
+    local archive="$HOST_TOOLS_DIR/src/xorriso-$XORRISO_VERSION.tar.gz"
 
-    mkdir -p "$HOST_TOOLS_DIR/src"
-    wget -q --tries=3 --timeout=30 \
-        "https://ftp.gnu.org/gnu/xorriso/xorriso-1.5.6.pl02.tar.gz" \
-        -O "$archive"
+    fetch_source "https://ftp.gnu.org/gnu/xorriso/xorriso-$XORRISO_VERSION.tar.gz" \
+        "$archive" "$XORRISO_SHA256"
 
     rm -rf "$src_dir"
     mkdir -p "$src_dir"
