@@ -1,6 +1,7 @@
 # Cherry Linux
 
-<img width="1024" height="1024" alt="cherry" src="https://github.com/user-attachments/assets/ac83bd00-cb50-4447-a39c-cfeb77d1c438" />
+<img width="1024" height="1024" alt="cherry" src="https://github.com/user-attachments/assets/aa7255cc-bb40-480c-ab17-3aa548c2a371" />
+
 
 Cherry Linux is a small, source-built live GNU/Linux distribution. Every
 userspace component is compiled from upstream sources during the build; the
