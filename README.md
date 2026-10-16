@@ -97,7 +97,9 @@ The persistence store is a regular filesystem on a disk or partition,
 labelled `cherry-persist` or selected via `cherry.persist=...`. OverlayFS
 requires extended attribute support on the store, so use ext4, xfs, btrfs
 or f2fs (vfat/exfat are not suitable). The `upper/` and `work/`
-directories are created automatically on first boot.
+directories are created automatically on first boot. If the store does
+not support extended attributes, Cherry warns and continues with a
+volatile overlay instead of failing.
 
 To prepare a store from another Linux system:
 
@@ -121,12 +123,11 @@ There is no CI yet; every release is validated manually against
 
 ## Roadmap
 
-- `0.6.x` — build infrastructure: pinned checksums, kernel auto-download,
-  Makefile, QEMU runner, documentation
-- `0.7.0` — boot/init reliability: persistence fixes, rescue shell,
-  shutdown polish
-- `0.8.0` — live UX: Limine boot menu, getty, editor, TLS
-- `0.9.0` — kernel and hardware: user namespaces, zram, firmware
+- `0.6.x` — build infrastructure and boot/init hardening: pinned
+  checksums, kernel auto-download, persistence fixes, rescue shell
+- `0.7.x` — live UX: Limine boot menu, getty, editor, TLS
+- `0.8.x` — kernel and hardware: user namespaces, zram, firmware
+- `0.9.x` — reproducibility, polish and stabilization
 - `1.0.0` — stable release
 
 ## License

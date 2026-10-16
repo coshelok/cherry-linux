@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 #include <sys/wait.h>
+#include <sys/xattr.h>
 #include <linux/magic.h>
 #include <unistd.h>
 
@@ -402,6 +403,33 @@ static int mount_persist_store(const char *dev)
     return -1;
 }
 
+/*
+ * OverlayFS needs extended attribute support on the upper layer. Probe the
+ * mounted store with a user xattr: filesystems such as vfat/exfat mount
+ * fine but cannot serve as a persistence store.
+ */
+static int persist_supports_xattrs(void)
+{
+    static const char path[] = PERSIST_MNT "/.cherry-xattr-probe";
+    static const char value[] = "1";
+    int ok = 0;
+    int fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
+
+    if (fd < 0) {
+        debug_msg("xattr probe: cannot create %s: %s", path, strerror(errno));
+        return 0;
+    }
+
+    if (fsetxattr(fd, "user.cherry.probe", value, sizeof(value) - 1, 0) == 0)
+        ok = 1;
+    else
+        debug_msg("xattr probe: setxattr failed: %s", strerror(errno));
+
+    close(fd);
+    (void)unlink(path);
+    return ok;
+}
+
 static void mount_persistence(void)
 {
     if (!opt_persist) {
@@ -430,6 +458,15 @@ static void mount_persistence(void)
     if (mount_persist_store(dev) < 0) {
         log_msg("WARN", "cannot mount persistence store %s: %s",
                 dev, strerror(errno));
+        return;
+    }
+
+    if (!persist_supports_xattrs()) {
+        log_msg("WARN",
+                "persistence store %s cannot host the OverlayFS upper layer "
+                "(extended attributes required; use ext4/xfs/btrfs/f2fs)", dev);
+        log_msg("WARN", "continuing with a volatile overlay");
+        (void)umount2(PERSIST_MNT, MNT_DETACH);
         return;
     }
 
@@ -511,6 +548,13 @@ static void build_overlay_root(void)
 
     mount_required(rootfs_loop_path, "/run/cherry/airootfs",
                    "squashfs", MS_RDONLY, NULL);
+
+    /* The SquashFS image is attached to the loop device now; the ISO mount
+       is no longer needed and must not leak into the final root. */
+    if (umount2("/run/cherry/bootmnt", MNT_DETACH) < 0)
+        debug_msg("umount boot media: %s", strerror(errno));
+    else
+        debug_msg("unmounted boot media");
 
     if (persist_active) {
         snprintf(upperdir, sizeof(upperdir), "%s/upper", PERSIST_MNT);

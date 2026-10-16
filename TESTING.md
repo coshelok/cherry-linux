@@ -24,6 +24,8 @@ candidate before tagging a release. Use a VM unless a test says otherwise.
 - [ ] `ping -c1 10.0.2.2` succeeds
 - [ ] `cat /etc/resolv.conf` contains a nameserver from DHCP
 - [ ] Exiting the shell (`exit`, Ctrl+D) restarts it after a second
+- [ ] No boot media mount leaks into the running system
+      (`grep -c bootmnt /proc/mounts` prints `0`)
 - [ ] `cherry.debug` on the cmdline produces `[BOOT][DEBUG]`/`[INIT][DEBUG]` logs
 
 ## Shutdown
@@ -45,6 +47,10 @@ rebuilding the ISO.
 - [ ] `[BOOT][INFO] Persistence enabled` appears in the boot log
 - [ ] `touch /root/persist-test`, reboot; the file is still there
 - [ ] Boot without `cherry.persist`; `persist-test` is absent after reboot
+- [ ] Unsuitable store: format a small image as vfat
+      (`mkfs.vfat -n cherry-persist vfat.img`), attach it and boot with
+      `cherry.persist`: a warning about extended attributes appears and
+      the system boots normally with a volatile overlay
 
 ## Rescue mode
 
