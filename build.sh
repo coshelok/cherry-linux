@@ -30,8 +30,9 @@ XORRISO_SHA256="786f9f5df9865cc5b0c1fecee3d2c0f5e04cab8c9a859bd1c9c7ccd4964fdae1
 ENABLE_BUSYBOX="${ENABLE_BUSYBOX:-0}"
 ENABLE_NET="${ENABLE_NET:-1}"
 REBUILD_ROOTFS="${REBUILD_ROOTFS:-0}"
+CMDLINE_EXTRA="${CMDLINE_EXTRA:-}"
 
-export ENABLE_BUSYBOX ENABLE_NET
+export ENABLE_BUSYBOX ENABLE_NET BUILD_DIR ROOTFS_DIR SOURCES_DIR
 
 log()  { printf '\033[1;34m[BUILD]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -73,7 +74,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for cmd in gcc cpio make tar wget nproc chmod cp rm find install tr sha256sum; do
+for cmd in gcc cpio make tar wget nproc chmod cp rm find install tr sha256sum cut readelf grep; do
     need "$cmd"
 done
 
@@ -107,7 +108,7 @@ build_kernel() {
     log "Normalizing kernel config"
     make -C "$KERNEL_DIR" olddefconfig >/dev/null
 
-    log "Building Linux 7.0.10"
+    log "Building Linux $KERNEL_VERSION"
     make -C "$KERNEL_DIR" -j"$(nproc)" bzImage
 
     [[ -f "$KERNEL_IMAGE" ]] || die "Kernel build finished but bzImage was not produced: $KERNEL_IMAGE"
@@ -167,9 +168,17 @@ build_xorriso
 need mksquashfs
 need xorriso
 
-if [[ ! -d "$ROOTFS_DIR" || ! -x "$ROOTFS_DIR/bin/sh" || "$REBUILD_ROOTFS" == "1" ]]; then
+source "$PROJECT_DIR/scripts/rootfs-cache.sh"
+ROOTFS_INPUT_HASH="$(rootfs_input_hash)"
+ROOTFS_CACHED_HASH=""
+if [[ -f "$ROOTFS_DIR/.cherry-build-inputs" ]]; then
+    ROOTFS_CACHED_HASH="$(cat "$ROOTFS_DIR/.cherry-build-inputs")"
+fi
+
+if [[ ! -x "$ROOTFS_DIR/bin/sh" || "$REBUILD_ROOTFS" == "1" || \
+      "$ROOTFS_CACHED_HASH" != "$ROOTFS_INPUT_HASH" ]]; then
     log "Building rootfs"
-    "$ROOTFS_SCRIPT"
+    CHERRY_VERSION="$CHERRY_VERSION" "$ROOTFS_SCRIPT"
 else
     log "Using existing rootfs at $ROOTFS_DIR"
     log "Set REBUILD_ROOTFS=1 to rebuild it from scratch"
@@ -178,10 +187,9 @@ fi
 [[ -x "$ROOTFS_DIR/bin/sh" ]] || die "rootfs/bin/sh is missing or not executable"
 [[ -f "$ROOTFS_DIR/etc/os-release" ]] || die "rootfs/etc/os-release is missing"
 
-if [[ "$ENABLE_NET" == "1" || "$ENABLE_BUSYBOX" == "1" ]]; then
-    [[ -x "$ROOTFS_DIR/usr/bin/busybox" ]] || \
-        die "rootfs is missing BusyBox; rebuild it with REBUILD_ROOTFS=1"
-    log "BusyBox networking toolset present (built from source by rootfs.sh)"
+[[ -x "$ROOTFS_DIR/usr/bin/busybox" ]] || die "rootfs is missing BusyBox"
+if readelf -l "$ROOTFS_DIR/usr/bin/busybox" | grep 'INTERP' >/dev/null; then
+    die "BusyBox must be statically linked to run in the initramfs"
 fi
 
 log "Compiling static Cherry bootstrap init"
@@ -211,13 +219,10 @@ INITRAMFS_STAGE="$BUILD_DIR/initramfs-stage"
 rm -rf "$INITRAMFS_STAGE"
 mkdir -p "$INITRAMFS_STAGE/bin"
 install -Dm755 "$BOOT_INIT_BINARY" "$INITRAMFS_STAGE/init"
-cpio_files=(init)
 # The bootstrap init needs blkid to resolve the persistence store by
 # label/UUID before the rootfs is live (no udev/mdev symlinks exist yet).
-if [[ -x "$ROOTFS_DIR/usr/bin/busybox" ]]; then
-    install -Dm755 "$ROOTFS_DIR/usr/bin/busybox" "$INITRAMFS_STAGE/bin/busybox"
-    cpio_files+=(bin bin/busybox)
-fi
+install -Dm755 "$ROOTFS_DIR/usr/bin/busybox" "$INITRAMFS_STAGE/bin/busybox"
+cpio_files=(init bin bin/busybox)
 (
     cd "$INITRAMFS_STAGE"
     printf '%s\n' "${cpio_files[@]}" | cpio -o -H newc --owner=0:0 --reproducible
@@ -235,7 +240,13 @@ cp "$LIMINE_DIR/limine-bios.sys" "$STAGING_DIR/"
 cp "$LIMINE_DIR/limine-bios-cd.bin" "$STAGING_DIR/"
 cp "$LIMINE_DIR/limine-uefi-cd.bin" "$STAGING_DIR/"
 
-cat > "$STAGING_DIR/limine.conf" <<'EOF_CFG'
+KERNEL_CMDLINE="loglevel=4 console=tty0"
+if [[ -n "$CMDLINE_EXTRA" ]]; then
+    KERNEL_CMDLINE+=" $CMDLINE_EXTRA"
+fi
+log "Kernel cmdline: $KERNEL_CMDLINE"
+
+cat > "$STAGING_DIR/limine.conf" <<EOF_CFG
 timeout: 3
 default_entry: 1
 
@@ -243,7 +254,7 @@ default_entry: 1
     protocol: linux
     kernel_path: boot():/boot/bzImage
     module_path: boot():/boot/init.cpio.gz
-    cmdline: loglevel=4 console=tty0
+    cmdline: $KERNEL_CMDLINE
 EOF_CFG
 
 log "Packaging ISO"

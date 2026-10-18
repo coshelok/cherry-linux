@@ -3,12 +3,12 @@
 <img width="1024" height="1024" alt="cherry" src="https://github.com/user-attachments/assets/aa7255cc-bb40-480c-ab17-3aa548c2a371" />
 
 
-Cherry Linux is a small, source-built live GNU/Linux distribution. Every
-userspace component is compiled from upstream sources during the build; the
+Cherry Linux is a small, source-built live GNU/Linux distribution. Its
+command-line tools are compiled from upstream sources during the build; the
 resulting image boots from a CD or USB drive, runs from a RAM-backed
 overlay, and can optionally persist changes to a writable partition.
 
-Current status: **0.6.0**. The project is working towards a
+Current status: **0.6.1**. The project is working towards a
 stable 1.0.0 release; see the roadmap below.
 
 ## Features
@@ -44,6 +44,9 @@ stable 1.0.0 release; see the roadmap below.
 Build host: x86_64 Linux with a working C toolchain and the usual build
 tools (`bash`, `gcc`, `make`, `wget`, `cpio`). `mksquashfs` and `xorriso`
 are built automatically if missing. The build does not require root.
+Static libc development libraries are required for the init programs and
+BusyBox. Shared runtime libraries for the GNU tools are copied from the
+build host, so the resulting userspace depends on the host toolchain and libc.
 
 ## Building
 
@@ -53,8 +56,11 @@ make            # equivalent to ./build.sh
 
 The kernel source tree is downloaded (and its sha256 verified) into
 `kernel/` when missing. All package archives are cached in `build/sources`
-and verified against pinned sha256 checksums on every build. The first
+and verified against pinned sha256 checksums before extraction. The first
 build is slow because it compiles the kernel; later builds reuse it.
+The rootfs is reused while its recipe, version, utilities, overlay contents
+and build options are unchanged. Changing these inputs automatically rebuilds
+the rootfs; downloaded archives remain cached.
 
 Useful environment variables:
 
@@ -65,6 +71,7 @@ Useful environment variables:
 | `ENABLE_NET=0` | Skip BusyBox networking setup |
 | `KERNEL_VERSION=7.0.10` | Kernel version to build |
 | `KERNEL_DIR=...` | Use a custom kernel source tree |
+| `CMDLINE_EXTRA="cherry.persist"` | Append kernel command line options to the ISO (testing aid until the boot menu lands) |
 | `BUILD_DIR=...` | Alternate build directory |
 
 Build output: `build/cherrylinux-v<VERSION>.iso`.
@@ -95,8 +102,9 @@ Options are passed on the kernel command line:
 
 The persistence store is a regular filesystem on a disk or partition,
 labelled `cherry-persist` or selected via `cherry.persist=...`. OverlayFS
-requires extended attribute support on the store, so use ext4, xfs, btrfs
-or f2fs (vfat/exfat are not suitable). The `upper/` and `work/`
+requires extended attribute support on the store. Use **ext4** with the
+default kernel config; xfs, btrfs and f2fs require enabling their drivers
+in `cherry.config` (vfat/exfat are not suitable). The `upper/` and `work/`
 directories are created automatically on first boot. If the store does
 not support extended attributes, Cherry warns and continues with a
 volatile overlay instead of failing.

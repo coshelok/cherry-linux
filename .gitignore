@@ -11,3 +11,8 @@ init.cpio.gz
 rootfs.sfs
 
 *.iso
+
+__pycache__/
+
+/*.img
+/*.log

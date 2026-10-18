@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <mntent.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -20,6 +21,7 @@
 #define CMDLINE_MAX 4096
 #define LIVE_CONF "/run/cherry/live.conf"
 #define SHUTDOWN_HOOK "/etc/rc.shutdown"
+#define MDEV_PATH "/usr/bin/mdev"
 
 /* Parsed kernel command line options. */
 static int opt_debug;
@@ -157,8 +159,29 @@ static void read_live_config(void)
     fclose(fp);
 }
 
+static int is_mounted(const char *target)
+{
+    FILE *fp = setmntent("/proc/self/mounts", "r");
+    if (!fp)
+        return 0;
+
+    int found = 0;
+    struct mntent *entry;
+    while ((entry = getmntent(fp)) != NULL) {
+        if (strcmp(entry->mnt_dir, target) == 0) {
+            found = 1;
+            break;
+        }
+    }
+    endmntent(fp);
+    return found;
+}
+
 static void mount_tmpfs(const char *target, const char *opts)
 {
+    if (is_mounted(target))
+        return;
+
     if (mkdir(target, 0755) < 0 && errno != EEXIST)
         log_msg("WARN", "mkdir %s: %s", target, strerror(errno));
 
@@ -180,6 +203,8 @@ static void setup_filesystems(void)
     };
 
     for (size_t i = 0; i < sizeof(mounts) / sizeof(mounts[0]); ++i) {
+        if (is_mounted(mounts[i].target))
+            continue;
         if (mount(mounts[i].target, mounts[i].target, mounts[i].fstype,
                   mounts[i].flags, mounts[i].data) < 0 && errno != EBUSY)
             log_msg("WARN", "mount %s: %s", mounts[i].target,
@@ -193,14 +218,8 @@ static void setup_filesystems(void)
 
 static void run_mdev(void)
 {
-    if (access("/sbin/mdev", X_OK) != 0)
+    if (access(MDEV_PATH, X_OK) != 0)
         return;
-
-    int fd = open("/proc/sys/kernel/hotplug", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        (void)write(fd, "/sbin/mdev", 10);
-        close(fd);
-    }
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -209,14 +228,20 @@ static void run_mdev(void)
     }
 
     if (pid == 0) {
-        char *const argv[] = { "mdev", "-s", NULL };
-        execv("/sbin/mdev", argv);
+        /* -d subscribes to netlink before scanning /sys, then daemonizes.
+         * The default kernel does not enable the legacy hotplug helper. */
+        char *const argv[] = { "mdev", "-d", NULL };
+        execv(MDEV_PATH, argv);
         _exit(127);
     }
 
     int status;
-    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
-        ;
+    pid_t waited;
+    do {
+        waited = waitpid(pid, &status, 0);
+    } while (waited < 0 && errno == EINTR);
+    if (waited < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        log_msg("WARN", "mdev failed to start");
 }
 
 static void run_script(const char *path)

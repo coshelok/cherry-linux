@@ -53,6 +53,9 @@ fi
 [[ "$CHERRY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || \
     die "Invalid Cherry Linux version: $CHERRY_VERSION"
 
+source "$PROJECT_DIR/scripts/rootfs-cache.sh"
+ROOTFS_INPUT_HASH="$(rootfs_input_hash)"
+
 mkdir -p "$BUILD_DIR" "$SOURCE_DIR"
 
 log "Creating root filesystem in $TARGET_DIR"
@@ -106,10 +109,10 @@ build_package() {
 
     fetch_source "$url" "$archive" "$sha"
 
-    if [[ ! -d "$src" ]]; then
-        mkdir -p "$src"
-        tar -xf "$archive" -C "$src" --strip-components=1
-    fi
+    # A rootfs rebuild must not reuse objects configured for an older recipe.
+    rm -rf "$src"
+    mkdir -p "$src"
+    tar -xf "$archive" -C "$src" --strip-components=1
 
     pushd "$src" >/dev/null
 
@@ -201,10 +204,9 @@ for entry in "${PKGS[@]}"; do
         src="$SOURCE_DIR/bzip2"
         archive="$SOURCE_DIR/$(basename "$url")"
         fetch_source "$url" "$archive" "$sha"
-        if [[ ! -d "$src" ]]; then
-            mkdir -p "$src"
-            tar -xf "$archive" -C "$src" --strip-components=1
-        fi
+        rm -rf "$src"
+        mkdir -p "$src"
+        tar -xf "$archive" -C "$src" --strip-components=1
         # bzip2 ships only a static archive; build it PIC so downstream
         # libraries can link it into shared objects.
         make -C "$src" clean >/dev/null 2>&1 || true
@@ -230,10 +232,6 @@ ln -sfn ../run "$TARGET_DIR/var/run"
 ln -sfn bash "$TARGET_DIR/usr/bin/sh"
 
 build_busybox_tools() {
-    if [[ "$ENABLE_NET" != "1" && "$ENABLE_BUSYBOX" != "1" ]]; then
-        return 0
-    fi
-
     log "Building BusyBox ${BUSYBOX_VERSION}"
     local archive="$SOURCE_DIR/busybox-${BUSYBOX_VERSION}.tar.bz2"
     local src="$SOURCE_DIR/busybox"
@@ -250,6 +248,8 @@ build_busybox_tools() {
         unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_SYSROOT_DIR PKG_CONFIG_LIBDIR
         make distclean >/dev/null 2>&1 || true
         make defconfig >/dev/null
+        # blkid runs before the live root (and its shared libraries) exists.
+        sed -i 's/^# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
         # The BusyBox tc applet no longer compiles against modern kernel
         # headers and is not needed on a live image.
         sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
@@ -259,6 +259,11 @@ build_busybox_tools() {
     )
 
     install -Dm755 "$src/busybox" "$TARGET_DIR/usr/bin/busybox"
+
+    # Keep blkid available to the bootstrap even with networking disabled.
+    if [[ "$ENABLE_NET" != "1" && "$ENABLE_BUSYBOX" != "1" ]]; then
+        return 0
+    fi
 
     # GNU coreutils remain the default; BusyBox adds the applets the live
     # environment needs (networking, login, logging, device hotplug).
@@ -355,14 +360,7 @@ for util in chepm cherryfetch; do
     fi
 done
 
-log "Preparing overlay tree"
 overlay_dir="$PROJECT_DIR/overlay"
-mkdir -p "$overlay_dir" \
-    "$overlay_dir/etc" \
-    "$overlay_dir/home/cherry" \
-    "$overlay_dir/root" \
-    "$overlay_dir/usr/local/bin" \
-    "$overlay_dir/usr/local/sbin"
 
 log "Applying Cherry Linux overlay"
 if [[ -d "$overlay_dir" ]]; then
@@ -518,4 +516,5 @@ if [[ "$ROOTFS_PROFILE" == "minimal" ]]; then
     find "$TARGET_DIR/usr/lib" -type f -name '*.a' -delete 2>/dev/null || true
 fi
 
+printf '%s\n' "$ROOTFS_INPUT_HASH" > "$TARGET_DIR/.cherry-build-inputs"
 log "Rootfs build complete: $TARGET_DIR"

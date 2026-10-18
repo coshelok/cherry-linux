@@ -295,8 +295,13 @@ static int run_capture(char *const argv[], char *out, size_t outsz)
     out[total] = '\0';
 
     int status;
-    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
-        ;
+    pid_t waited;
+    do {
+        waited = waitpid(pid, &status, 0);
+    } while (waited < 0 && errno == EINTR);
+
+    if (waited < 0)
+        return -1;
 
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         return -1;
@@ -354,6 +359,10 @@ static int find_blkid(const char *field, const char *value,
 static void persist_device_path(char *out, size_t outsz)
 {
     const char *spec = opt_persist_spec;
+
+    if (outsz == 0)
+        return;
+    out[0] = '\0';
 
     if (spec[0] == '\0') {
         if (find_blkid("LABEL", "cherry-persist", out, outsz) == 0)
@@ -437,7 +446,7 @@ static void mount_persistence(void)
         return;
     }
 
-    char dev[PATH_MAX];
+    char dev[PATH_MAX] = {0};
     struct stat st;
 
     persist_device_path(dev, sizeof(dev));
