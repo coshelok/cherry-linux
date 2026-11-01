@@ -1,18 +1,27 @@
-/sources/
-
-/rootfs/
-
+# Build outputs and downloaded/extracted sources.
 /build/
-
+/build-*/
+/sources/
+/rootfs/
 /kernel/
 
-init.cpio.gz
-
-rootfs.sfs
-
+# Images and sidecars are release assets, not source files.
+/init.cpio.gz
+/init.cpio.gz.tmp
+/rootfs.sfs
+/rootfs.sfs.tmp
 *.iso
-
-__pycache__/
-
+*.iso.tmp
+*.iso.sha256
 /*.img
 /*.log
+
+# Compiled host utility; build.sh builds it from limine.c in BUILD_DIR.
+/tools/limine-src/limine
+
+# Python bytecode and local editor temporary files.
+__pycache__/
+*.py[cod]
+*.swp
+*.swo
+*~

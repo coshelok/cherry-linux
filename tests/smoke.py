@@ -16,7 +16,9 @@ test -r /run/cherry/live.conf &&
 test "$(grep -c ' /run ' /proc/mounts)" = 1 &&
 test "$(grep -c ' /dev ' /proc/mounts)" = 1 &&
 test "$(grep -c ' /dev/pts ' /proc/mounts)" = 1 &&
-test -n "$(/usr/bin/busybox pidof mdev)"
+test -n "$(/usr/bin/busybox pidof mdev)" &&
+test "$(stat -c %u /home/cherry)" = 1000 &&
+su cherry -c 'touch /home/cherry/.smoke-user'
 """.strip().replace("\n", " ")
 
 
@@ -46,7 +48,7 @@ def boot(name, args, directory, cmdline, check, disk=None):
                         selector.unregister(key.fileobj)
                         continue
                     output.extend(chunk)
-                if not sent and b"cherry:/# " in output:
+                if not sent and (b"cherry:/# " in output or b"cherry:~# " in output):
                     # Split the marker in printf so terminal echo cannot fake success.
                     shell = (f"if ( {COMMON} && {check} ); then "
                              "printf '__CHERRY_%s__\\n' PASS; else "
@@ -68,6 +70,13 @@ def boot(name, args, directory, cmdline, check, disk=None):
             raise RuntimeError("missing-store: attempted to mount an unrelated device")
         if name == "vfat" and "extended attributes required" not in log:
             raise RuntimeError("vfat: missing unsupported-filesystem warning")
+        if "[SHUTDOWN] Filesystems closed cleanly" not in log:
+            raise RuntimeError(f"{name}: missing clean shutdown marker")
+        if disk:
+            metadata = subprocess.check_output(["dumpe2fs", "-h", str(disk)],
+                text=True, stderr=subprocess.DEVNULL) if name != "vfat" else ""
+            if "needs_recovery" in metadata or "orphan_present" in metadata:
+                raise RuntimeError(f"{name}: filesystem still requires journal recovery")
         print(f"PASS {name}", flush=True)
     finally:
         if proc.poll() is None:
@@ -82,6 +91,7 @@ def main():
     parser.add_argument("--kernel", type=Path,
                         default=PROJECT / "kernel/linux-7.0.10/arch/x86/boot/bzImage")
     parser.add_argument("--iso", type=Path)
+    parser.add_argument("--no-network", action="store_true", help="Test a rootfs built with ENABLE_NET=0")
     args = parser.parse_args()
     args.build_dir = args.build_dir.resolve()
     args.kernel = args.kernel.resolve()
@@ -97,8 +107,13 @@ def main():
         uuid = subprocess.check_output(["blkid", "-s", "UUID", "-o", "value", str(disk)],
                                        text=True).strip()
         try:
+            if args.no_network:
+                boot("no-network", args, directory, "", 'test -x /sbin/poweroff && test -x /usr/bin/vi && test ! -e /usr/lib/cherry/net-up')
+                boot("no-network-persist", args, directory, "cherry.persist", 'test "$CHERRY_PERSIST" = 1', disk)
+                return
+            boot("rescue", args, directory, "cherry.rescue", 'test -z "$(busybox pidof udhcpc)" && test -x /usr/bin/vi')
             boot("missing-store", args, directory, "cherry.persist",
-                 'test "$CHERRY_PERSIST" = 0 && ping -c 1 10.0.2.2')
+                 'test "$CHERRY_PERSIST" = 0 && ping -c 1 10.0.2.2 && test -n "$(busybox pidof udhcpc)"')
             boot("autodetect-write", args, directory, "cherry.persist",
                  'test "$CHERRY_PERSIST" = 1 && echo saved > /root/persist-test', disk)
             for name, spec in (("uuid-read", "UUID=" + uuid),
@@ -111,6 +126,13 @@ def main():
                  'test "$CHERRY_PERSIST" = 0 && test ! -e /root/persist-test', disk)
             boot("volatile-control", args, directory, "",
                  'test "$CHERRY_PERSIST" = 0 && test ! -e /root/persist-test', disk)
+            malformed = directory / "malformed.img"
+            with malformed.open("wb") as stream: stream.truncate(128 * 1024 * 1024)
+            subprocess.run(["mkfs.ext4", "-q", "-F", "-L", "CHERRYBAD", str(malformed)], check=True)
+            empty = directory / "empty"
+            empty.touch()
+            subprocess.run(["debugfs", "-w", "-R", f"write {empty} /upper", str(malformed)], check=True, capture_output=True)
+            boot("malformed-upper", args, directory, "cherry.persist=LABEL=CHERRYBAD", 'test "$CHERRY_PERSIST" = 0', malformed)
             vfat = directory / "vfat.img"
             with vfat.open("wb") as stream:
                 stream.truncate(64 * 1024 * 1024)

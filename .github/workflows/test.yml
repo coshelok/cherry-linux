@@ -1,0 +1,46 @@
+name: Cherry Linux
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: make test
+  image:
+    strategy:
+      matrix:
+        include:
+          - profile: full
+            network: '1'
+          - profile: minimal
+            network: '0'
+    env:
+      ROOTFS_PROFILE: ${{ matrix.profile }}
+      ENABLE_NET: ${{ matrix.network }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y build-essential flex bison bc libelf-dev libssl-dev cpio squashfs-tools xorriso qemu-system-x86 ovmf dosfstools e2fsprogs wget openssl ca-certificates
+      - uses: actions/cache@v4
+        with:
+          path: build/sources/*.tar.*
+          key: sources-${{ hashFiles('rootfs.sh', 'build.sh') }}
+          restore-keys: sources-
+      - run: THREADS=2 make build
+      - if: matrix.network == '1'
+        run: make smoke
+      - if: matrix.network == '0'
+        run: python3 tests/smoke.py --no-network
+      - if: matrix.network == '0'
+        run: python3 tests/console.py
+      - run: make smoke-iso
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cherry-build-logs-${{ matrix.profile }}
+          path: |
+            build/*.log
+            build/smoke-logs/
+            build/iso-logs/
+            build/tls-logs/
+            build/console-logs/

@@ -2,9 +2,12 @@
 set -Eeuo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="${BUILD_DIR:-$PROJECT_DIR/build}"
-TARGET_DIR="${ROOTFS_DIR:-$BUILD_DIR/rootfs}"
-SOURCE_DIR="${SOURCES_DIR:-$BUILD_DIR/sources}"
+source "$PROJECT_DIR/scripts/build-common.sh"
+BUILD_DIR="$(absolute_path "${BUILD_DIR:-$PROJECT_DIR/build}")"
+FINAL_DIR="$(absolute_path "${ROOTFS_DIR:-$BUILD_DIR/rootfs}")"
+SOURCE_DIR="$(absolute_path "${SOURCES_DIR:-$BUILD_DIR/sources}")"
+check_output_path "$FINAL_DIR"
+PACKAGE_DIR="$BUILD_DIR/package-rootfs"
 THREADS="${THREADS:-$(nproc)}"
 ROOTFS_PROFILE="${ROOTFS_PROFILE:-full}"
 ENABLE_NET="${ENABLE_NET:-1}"
@@ -17,7 +20,7 @@ info() { printf '\033[1;34m[ROOTFS]\033[0m   %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 
-for cmd in gcc make wget tar file ldd find awk cut grep install tr sed sort basename sha256sum; do
+for cmd in gcc make wget tar file ldd find awk cut grep install tr sed sort basename sha256sum realpath flock readelf xargs; do
     need "$cmd"
 done
 
@@ -54,12 +57,19 @@ fi
     die "Invalid Cherry Linux version: $CHERRY_VERSION"
 
 source "$PROJECT_DIR/scripts/rootfs-cache.sh"
+CA_BUNDLE="${CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
+[[ "$ENABLE_NET" != "1" || -s "$CA_BUNDLE" ]] || die "Missing CA bundle: $CA_BUNDLE"
 ROOTFS_INPUT_HASH="$(rootfs_input_hash)"
+PACKAGE_INPUT_HASH="$(package_input_hash)"
 
 mkdir -p "$BUILD_DIR" "$SOURCE_DIR"
-
-log "Creating root filesystem in $TARGET_DIR"
-rm -rf "$TARGET_DIR"
+exec 8>"$BUILD_DIR/.rootfs.lock"
+flock -n 8 || die "Another rootfs build is running"
+TARGET_DIR="$(mktemp -d "$BUILD_DIR/rootfs-stage.XXXXXX")"
+trap 'rm -rf -- "$TARGET_DIR"' EXIT
+if [[ "${REBUILD_ROOTFS:-0}" == "1" || ! -f "$PACKAGE_DIR/.cherry-package-inputs" ||
+      "$(cat "$PACKAGE_DIR/.cherry-package-inputs")" != "$PACKAGE_INPUT_HASH" ]]; then
+log "Building package cache in $TARGET_DIR"
 mkdir -p \
     "$TARGET_DIR"/{etc,dev,proc,sys,root,home,tmp,run,mnt,srv,opt,cdrom} \
     "$TARGET_DIR/home/cherry" \
@@ -253,6 +263,14 @@ build_busybox_tools() {
         # The BusyBox tc applet no longer compiles against modern kernel
         # headers and is not needed on a live image.
         sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
+        # Require OpenSSL verification; never fall back to unverified TLS.
+        sed -i 's/^CONFIG_FEATURE_WGET_HTTPS=y/# CONFIG_FEATURE_WGET_HTTPS is not set/' .config
+        # BusyBox 1.36.1 passes host:port to -verify_ip; use the bare IP instead.
+        sed -i 's/(char\*)host;         \/\/[[]11[]]/(char*)servername;   \/\/[11]/' networking/wget.c
+        # A locked shadow entry is not a crypt salt. Refuse it before calling
+        # pw_encrypt, so login reports a normal authentication failure.
+        sed -i '/encrypted = pw_encrypt(plaintext/i\
+\tif (pw_pass[0] == '\''!'\'' || pw_pass[0] == '\''*'\'')\n\t\treturn 0;' libbb/correct_password.c
         yes "" | make oldconfig >/dev/null 2>&1 || true
         info "compiling BusyBox"
         make -j"$THREADS" >/dev/null
@@ -260,19 +278,17 @@ build_busybox_tools() {
 
     install -Dm755 "$src/busybox" "$TARGET_DIR/usr/bin/busybox"
 
-    # Keep blkid available to the bootstrap even with networking disabled.
-    if [[ "$ENABLE_NET" != "1" && "$ENABLE_BUSYBOX" != "1" ]]; then
-        return 0
-    fi
-
     # GNU coreutils remain the default; BusyBox adds the applets the live
     # environment needs (networking, login, logging, device hotplug).
     local applets=(
-        ip udhcpc ping wget nslookup netstat route ifconfig
+        vi dmesg ps kill
         login getty passwd su sulogin
         syslogd klogd logread mdev
         mount umount clear reset sync
     )
+    if [[ "$ENABLE_NET" == "1" ]]; then
+        applets+=(ip udhcpc ping wget nslookup netstat route ifconfig)
+    fi
     (
         cd "$TARGET_DIR/usr/bin"
         for applet in "${applets[@]}"; do
@@ -323,188 +339,16 @@ EOF_SHUTDOWN
 
 build_busybox_tools
 
-log "Copying runtime shared-library dependencies"
-copy_lib() {
-    local src="$1"
-    [[ -f "$src" ]] || return 0
-    install -Dm755 "$src" "$TARGET_DIR/usr/lib/$(basename "$src")"
-}
-
-while IFS= read -r bin_file; do
-    file "$bin_file" 2>/dev/null | grep -q 'ELF' || continue
-
-    ldd_out="$(ldd "$bin_file" 2>&1 || true)"
-    if grep -q 'not found' <<< "$ldd_out"; then
-        die "Unresolved runtime dependency in $bin_file:\n$ldd_out"
-    fi
-
-    while IFS= read -r lib; do
-        [[ -n "$lib" && "$lib" == /* ]] || continue
-        copy_lib "$lib"
-    done < <(printf '%s\n' "$ldd_out" | awk '$1 ~ /^\// {print $1} $3 ~ /^\// {print $3}' | sort -u)
-done < <(find "$TARGET_DIR/usr/bin" "$TARGET_DIR/usr/sbin" -type f -executable 2>/dev/null)
-
-ld_linux="$(gcc -print-file-name=ld-linux-x86-64.so.2)"
-[[ -f "$ld_linux" ]] || die "Could not locate host x86_64 dynamic loader"
-copy_lib "$ld_linux"
-
-for lib in libnss_files.so.2 libnss_dns.so.2; do
-    found="$(find /lib /usr/lib -name "$lib" -print -quit 2>/dev/null || true)"
-    [[ -n "$found" ]] && copy_lib "$found"
-done
-
-log "Installing Cherry utilities"
-for util in chepm cherryfetch; do
-    if [[ -f "$PROJECT_DIR/utils/$util" ]]; then
-        install -Dm755 "$PROJECT_DIR/utils/$util" "$TARGET_DIR/usr/bin/$util"
-    fi
-done
-
-overlay_dir="$PROJECT_DIR/overlay"
-
-log "Applying Cherry Linux overlay"
-if [[ -d "$overlay_dir" ]]; then
-    (
-        cd "$overlay_dir"
-        shopt -s dotglob nullglob
-        for f in *; do
-            [[ -e "$f" ]] || continue
-            [[ "$f" == "README.md" ]] && continue
-            cp -a "$f" "$TARGET_DIR/"
-        done
-    )
-    find "$TARGET_DIR/etc" -type f -name '*.sh' -exec chmod 755 {} +
-    chmod 755 "$TARGET_DIR/etc/rc.shutdown" 2>/dev/null || true
-fi
-
-log "Writing system configuration"
-cat > "$TARGET_DIR/etc/passwd" <<'EOF_PASSWD'
-root:x:0:0:root:/root:/bin/sh
-cherry:x:1000:1000:Cherry User:/home/cherry:/bin/sh
-EOF_PASSWD
-
-cat > "$TARGET_DIR/etc/group" <<'EOF_GROUP'
-root:x:0:
-wheel:x:10:cherry
-video:x:18:cherry
-audio:x:29:cherry
-input:x:33:cherry
-cherry:x:1000:
-EOF_GROUP
-
-cat > "$TARGET_DIR/etc/shadow" <<'EOF_SHADOW'
-root:!:19701:0:99999:7:::
-cherry:!:19701:0:99999:7:::
-EOF_SHADOW
-chmod 600 "$TARGET_DIR/etc/shadow"
-
-cat > "$TARGET_DIR/etc/fstab" <<'EOF_FSTAB'
-tmpfs /tmp tmpfs defaults,mode=1777 0 0
-EOF_FSTAB
-
-cat > "$TARGET_DIR/etc/os-release" <<EOF_OS
-NAME="Cherry Linux"
-ID=cherrylinux
-VERSION="${CHERRY_VERSION}"
-VERSION_ID="${CHERRY_VERSION}"
-PRETTY_NAME="Cherry Linux ${CHERRY_VERSION}"
-EOF_OS
-
-echo "cherrylinux" > "$TARGET_DIR/etc/hostname"
-printf '%s\n' '/usr/lib' > "$TARGET_DIR/etc/ld.so.conf"
-
+# OpenSSL and the CA bundle are explicit host bootstrap inputs, like libc.
+# BusyBox's unverified TLS fallback is disabled below; missing TLS fails closed.
 if [[ "$ENABLE_NET" == "1" ]]; then
-    log "Writing networking configuration"
-
-    cat > "$TARGET_DIR/etc/hosts" <<'EOF_HOSTS'
-127.0.0.1 localhost cherrylinux
-::1       localhost cherrylinux
-EOF_HOSTS
-
-    cat > "$TARGET_DIR/etc/nsswitch.conf" <<'EOF_NSSWITCH'
-passwd: files
-group:  files
-shadow: files
-hosts:  files dns
-networks: files
-services: files
-EOF_NSSWITCH
-
-    printf '%s\n' 'nameserver 1.1.1.1' > "$TARGET_DIR/etc/resolv.conf"
-
-    install -d "$TARGET_DIR/usr/share/udhcpc" "$TARGET_DIR/usr/lib/cherry"
-
-    cat > "$TARGET_DIR/usr/share/udhcpc/default.script" <<'EOF_UDHCPC'
-#!/bin/sh
-# Cherry Linux udhcpc handler: address, default route and DNS.
-RESOLV_CONF=/etc/resolv.conf
-
-case "$1" in
-    deconfig)
-        ip -4 addr flush dev "$interface" 2>/dev/null
-        ip link set dev "$interface" up 2>/dev/null
-        ;;
-    bound|renew)
-        # Removing the address also drops the kernel's connected route; never
-        # `ip route flush dev` here or the default gateway becomes unreachable.
-        ip -4 addr flush dev "$interface" 2>/dev/null
-        ip addr add "$ip/$mask" dev "$interface" 2>/dev/null
-
-        ip route del default dev "$interface" 2>/dev/null
-        for r in $router; do
-            ip route add default via "$r" dev "$interface" 2>/dev/null
-        done
-
-        : > "$RESOLV_CONF"
-        if [ -n "$domain" ]; then
-            echo "search $domain" >> "$RESOLV_CONF"
-        fi
-        for s in $dns; do
-            echo "nameserver $s" >> "$RESOLV_CONF"
-        done
-        ;;
-esac
-
-exit 0
-EOF_UDHCPC
-    chmod 755 "$TARGET_DIR/usr/share/udhcpc/default.script"
-
-    cat > "$TARGET_DIR/usr/lib/cherry/net-up" <<'EOF_NETUP'
-#!/bin/sh
-# Bring up link-local interfaces and request a DHCP lease for each physical NIC.
-PATH=/usr/bin:/usr/sbin:/bin:/sbin
-export PATH
-
-log() { printf '[net] %s\n' "$*"; }
-
-ip link set lo up 2>/dev/null || true
-
-configured=0
-for sysif in /sys/class/net/*; do
-    [ -e "$sysif" ] || continue
-    iface=${sysif##*/}
-    [ "$iface" = lo ] && continue
-    [ -e "$sysif/device" ] || continue
-
-    ip link set "$iface" up 2>/dev/null || true
-    log "requesting DHCP lease on $iface"
-
-    if udhcpc -i "$iface" -n -q -t 3 -T 2 \
-            -s /usr/share/udhcpc/default.script; then
-        addr=$(ip -4 -o addr show dev "$iface" 2>/dev/null | awk '{print $4}')
-        gw=$(ip -4 route show dev "$iface" 2>/dev/null | awk '$1=="default"{print $3; exit}')
-        log "$iface online: ${addr:-<no address>}${gw:+ via $gw}"
-        configured=1
-    else
-        log "$iface: no DHCP lease"
-    fi
-done
-
-[ "$configured" = 1 ] || log "no interface obtained a DHCP lease"
-exit 0
-EOF_NETUP
-    chmod 755 "$TARGET_DIR/usr/lib/cherry/net-up"
+    need openssl
+    install -Dm755 "$(command -v openssl)" "$TARGET_DIR/usr/bin/openssl"
+    install -Dm644 "$CA_BUNDLE" "$TARGET_DIR/etc/ssl/certs/ca-certificates.crt"
+    ln -s certs/ca-certificates.crt "$TARGET_DIR/etc/ssl/cert.pem"
 fi
+source "$PROJECT_DIR/scripts/copy-libraries.sh"
+copy_runtime_libraries
 
 if [[ "$ROOTFS_PROFILE" == "minimal" ]]; then
     log "Applying minimal profile cleanup"
@@ -512,9 +356,21 @@ if [[ "$ROOTFS_PROFILE" == "minimal" ]]; then
         "$TARGET_DIR/usr/include" \
         "$TARGET_DIR/usr/share/man" \
         "$TARGET_DIR/usr/share/info" \
-        "$TARGET_DIR/usr/share/doc"
+        "$TARGET_DIR/usr/share/doc" \
+        "$TARGET_DIR/usr/share/locale"
     find "$TARGET_DIR/usr/lib" -type f -name '*.a' -delete 2>/dev/null || true
 fi
 
+printf '%s\n' "$PACKAGE_INPUT_HASH" > "$TARGET_DIR/.cherry-package-inputs"
+# Record imported runtime binaries/libraries and trust store for this build.
+(cd "$TARGET_DIR"; find usr/lib -type f -print0 | sort -z | xargs -0 sha256sum) > "$TARGET_DIR/.cherry-runtime-sha256"
+publish_tree "$TARGET_DIR" "$PACKAGE_DIR"
+TARGET_DIR="$(mktemp -d "$BUILD_DIR/rootfs-stage.XXXXXX")"
+else
+    log "Using cached packages (overlay/version changes do not recompile userland)"
+fi
+cp -a "$PACKAGE_DIR/." "$TARGET_DIR/"
+source "$PROJECT_DIR/scripts/rootfs-config.sh"
 printf '%s\n' "$ROOTFS_INPUT_HASH" > "$TARGET_DIR/.cherry-build-inputs"
-log "Rootfs build complete: $TARGET_DIR"
+publish_tree "$TARGET_DIR" "$FINAL_DIR"
+log "Rootfs build complete: $FINAL_DIR"

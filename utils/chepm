@@ -1,78 +1,104 @@
 #!/bin/sh
-# chepm - The Cherry Linux Package Manager
-
-REPO_URL="cherepo"
-STATE_DIR="/var/lib/chepm"
-MANIFEST_DIR="$STATE_DIR/manifests"
-
-mkdir -p "$MANIFEST_DIR"
-
-log() { printf "\033[1;36m[chepm]\033[0m %s\n" "$*"; }
-err() { printf "\033[1;31m[chepm]\033[0m %s\n" "$*"; exit 1; }
-
-cmd_install() {
-    local pkg=$1
-    [ -z "$pkg" ] && err "Specify package name"
-    
-    if [ -f "$MANIFEST_DIR/$pkg" ]; then
-        log "Package '$pkg' is already installed."
-        return 0
-    fi
-
-    log "Fetching $pkg from $REPO_URL..."
-    local tmp_tar="/tmp/${pkg}.tar.gz"
-    
-    if [ "$REPO_URL" = "cherepo" ]; then
-        log "WARNING: Using placeholder cherepo. Expecting local archive at $tmp_tar"
-        [ ! -f "$tmp_tar" ] && err "Place a test package at $tmp_tar to simulate download."
-    else
-        wget -q --show-progress "$REPO_URL/${pkg}.tar.gz" -O "$tmp_tar" || err "Failed to download $pkg"
-    fi
-
-    log "Extracting $pkg to / ..."
-    tar -xzvf "$tmp_tar" -C / > "$MANIFEST_DIR/$pkg" || err "Failed to extract archive"
-
-    rm -f "$tmp_tar"
-    log "Package '$pkg' installed successfully!"
+# Experimental regular-file packages. Only explicit, trusted SHA256s are accepted.
+set -eu
+ROOT=${CHEPM_ROOT:-/}
+REPO_URL=${CHEPM_REPO_URL:-}
+case "$ROOT" in /*) ;; *) echo 'CHEPM_ROOT must be absolute' >&2; exit 1 ;; esac
+ROOT=$(cd "$ROOT" && pwd -P)
+STATE="$ROOT/var/lib/chepm"
+MANIFESTS="$STATE/manifests"
+err() { echo "chepm: $*" >&2; exit 1; }
+valid_path() {
+    case "$1" in ''|/*|..|../*|*/../*|*/..|*//*|*[!a-zA-Z0-9_./+@=-]*|var/lib/chepm|var/lib/chepm/*) return 1 ;; esac
 }
-
-cmd_remove() {
-    local pkg=$1
-    [ -z "$pkg" ] && err "Specify package name"
-    
-    local manifest="$MANIFEST_DIR/$pkg"
-    [ ! -f "$manifest" ] && err "Package '$pkg' is not installed."
-
-    log "Removing $pkg..."
-    tac "$manifest" | while read -r file; do
-        local target="/$file"
-        if [ -f "$target" ] || [ -L "$target" ]; then
-            rm -f "$target"
-        elif [ -d "$target" ]; then
-            rmdir "$target" 2>/dev/null || true
-        fi
+check_parents() {
+    parent=${1%/*}
+    while [ "$parent" != "$1" ] && [ "$parent" != . ]; do
+        [ ! -L "$ROOT/$parent" ] || err "Symlink parent refused: $parent"
+        [ ! -e "$ROOT/$parent" ] || [ -d "$ROOT/$parent" ] || err "Non-directory parent: $parent"
+        case "$parent" in */*) parent=${parent%/*} ;; *) break ;; esac
     done
-
-    rm -f "$manifest"
-    log "Package '$pkg' removed successfully!"
 }
-
-cmd_list() {
-    log "Installed packages:"
-    if [ -z "$(ls -A "$MANIFEST_DIR" 2>/dev/null)" ]; then
-        echo "  (none)"
-    else
-        ls -1 "$MANIFEST_DIR" | while read -r pkg; do
-            echo "  - $pkg"
-        done
-    fi
-}
-
-case "$1" in
-    -ins) cmd_install "$2" ;;
-    -del) cmd_remove "$2" ;;
-    -ls)  cmd_list ;;
-    *)       
-        echo "Usage: chepm {-ins|-del|-ls} <package>"
-        ;;
+case "${1:-}" in
+    --help|-h|'')
+        echo 'Usage: chepm -ins NAME [ARCHIVE] SHA256 | -del NAME | -ls'
+        echo 'Without ARCHIVE, CHEPM_REPO_URL must be an HTTPS repository.'
+        echo 'Only regular files/directories; no overwrite, links, hooks or dependency resolution.'
+        exit 0 ;;
+    -ins|-del|-ls) action=$1 ;;
+    *) err 'Unknown command; use --help' ;;
 esac
+if [ "$ROOT" = / ]; then [ "$(id -u)" = 0 ] || err 'Run as root'; fi
+mkdir -p "$MANIFESTS"
+mkdir "$STATE/lock" 2>/dev/null || err 'Another operation is running (or a stale lock needs recovery)'
+tmp=''
+cleanup() { [ -z "$tmp" ] || rm -rf -- "$tmp"; rmdir "$STATE/lock"; }
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+if [ "$action" = -ls ]; then
+    find "$MANIFESTS" -maxdepth 1 -type f -printf '%f\n' | sort
+    exit 0
+fi
+pkg=${2:-}
+case "$pkg" in ''|.*|*[!a-zA-Z0-9_+.-]*) err 'Invalid package name' ;; esac
+manifest="$MANIFESTS/$pkg"
+if [ "$action" = -del ]; then
+    [ -f "$manifest" ] || err 'Package is not installed'
+    while IFS= read -r file; do
+        valid_path "$file" || err 'Invalid manifest path'
+        check_parents "$file"
+    done < "$manifest"
+    while IFS= read -r file; do rm -f -- "$ROOT/$file"; done < "$manifest"
+    rm -f -- "$manifest"
+    echo "Removed $pkg (shared directories retained)"
+    exit 0
+fi
+[ ! -e "$manifest" ] || err 'Package is already installed'
+[ ! -e "$STATE/$pkg.pending" ] || err 'Interrupted installation; inspect the .pending file before retrying'
+tmp=$(mktemp -d "$STATE/stage.XXXXXX")
+if [ "$#" = 4 ]; then archive=$3; expected=$4
+elif [ "$#" = 3 ]; then
+    expected=$3
+    case "$REPO_URL" in https://*) ;; *) err 'CHEPM_REPO_URL must use HTTPS' ;; esac
+    archive="$tmp/package.tar.gz"
+    wget -q "$REPO_URL/$pkg.tar.gz" -O "$archive" || err 'Download failed'
+else err 'Provide an archive and its trusted SHA256 (see --help)'
+fi
+case "$expected" in *[!0-9a-fA-F]*|'') err 'Invalid SHA256' ;; esac
+[ "${#expected}" = 64 ] || err 'SHA256 must contain 64 hex digits'
+printf '%s  %s\n' "$expected" "$archive" | sha256sum -c --status - || err 'Checksum mismatch'
+gzip -t "$archive" || err 'Invalid gzip archive'
+LC_ALL=C tar -tzf "$archive" > "$tmp/paths" || err 'Invalid tar archive'
+LC_ALL=C tar -tvzf "$archive" > "$tmp/types" || err 'Invalid tar archive'
+# Links and special files need richer package metadata; reject them explicitly.
+awk 'substr($0,1,1)!="-" && substr($0,1,1)!="d" {bad=1} END {exit bad}' "$tmp/types" || err 'Only regular files and directories are supported'
+while IFS= read -r file; do
+    file=${file#./}; file=${file%/}
+    [ -n "$file" ] && [ "$file" != . ] || continue
+    valid_path "$file" || err "Unsafe archive path: $file"
+    check_parents "$file"
+done < "$tmp/paths"
+mkdir "$tmp/root"
+tar -xzf "$archive" -C "$tmp/root" --no-same-owner --no-same-permissions || err 'Extraction failed'
+(cd "$tmp/root"; find . -type f -print | sed 's|^./||' | sort) > "$tmp/manifest"
+[ -s "$tmp/manifest" ] || err 'Package contains no regular files'
+while IFS= read -r file; do
+    [ ! -e "$ROOT/$file" ] && [ ! -L "$ROOT/$file" ] || err "File conflict: $file"
+done < "$tmp/manifest"
+cp "$tmp/manifest" "$STATE/$pkg.pending"
+: > "$tmp/installed"
+failed=0
+while IFS= read -r file; do
+    mkdir -p -- "$(dirname "$ROOT/$file")" || { failed=1; break; }
+    # Record before copying so a partial write is also removed on failure.
+    printf '%s\n' "$file" >> "$tmp/installed"
+    cp -p --no-preserve=ownership -- "$tmp/root/$file" "$ROOT/$file" &&
+        chmod u-s,g-s -- "$ROOT/$file" || { failed=1; break; }
+done < "$tmp/manifest"
+if [ "$failed" = 1 ]; then
+    while IFS= read -r file; do rm -f -- "$ROOT/$file"; done < "$tmp/installed"
+    rm -f "$STATE/$pkg.pending"
+    err 'Install failed; copied files rolled back'
+fi
+mv "$STATE/$pkg.pending" "$manifest"
+echo "Installed $pkg"

@@ -1,0 +1,12 @@
+#!/bin/sh
+if [ -r /run/cherry/live.conf ]; then
+    . /run/cherry/live.conf
+fi
+if [ "${CHERRY_PERSIST:-0}" = 1 ]; then
+    echo 'Persistence: active — changes survive shutdown.'
+    df -h /run/cherry/persist
+else
+    echo 'Persistence: inactive — changes are lost on shutdown.'
+    [ "${CHERRY_PERSIST_REQUESTED:-0}" != 1 ] || echo 'WARNING: requested storage was unavailable. Back up important files.'
+    df -h /
+fi

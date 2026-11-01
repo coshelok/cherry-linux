@@ -1,0 +1,20 @@
+#!/bin/sh
+cat <<'HELP'
+Cherry Linux live console
+  cherry-status        Show whether changes survive shutdown and free space
+  cherryfetch          Show system information
+  vi FILE              Edit a file (:wq saves and exits, :q! discards changes)
+  ip addr / ip route   Inspect networking
+  wget https://URL     Download with certificate and hostname verification
+  busybox dmesg        Inspect kernel messages
+  su cherry            Use the unprivileged local account (root can switch)
+  passwd root          Set a password before enabling cherry.login
+  reboot / poweroff    Stop services and close persistence before shutdown
+
+The default console automatically logs in as root. Use cherry.login on the
+kernel command line for password login after configuring accounts.
+Boot menu: Live (RAM), Persistent (auto-detect cherry-persist), Rescue, Debug.
+Rescue skips network and rc.local. Hooks must be executable and finish within
+30 seconds. No remote login service is enabled.
+chepm remains experimental; see chepm --help before using trusted packages.
+HELP

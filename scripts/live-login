@@ -1,0 +1,7 @@
+#!/bin/sh
+# Deliberate local root autologin for a rescue/live distribution. No network login.
+export HOME=/root USER=root LOGNAME=root SHELL=/bin/sh
+export PATH=/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+export PS1='cherry:\w# '
+cd /root
+exec /bin/sh -i

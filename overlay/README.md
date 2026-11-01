@@ -1,8 +1,8 @@
 # Cherry Linux overlay
 
 Files placed in this directory are merged into the root filesystem
-(`/usr`) at build time by `rootfs.sh`, on top of the packages installed
-from source. The conventional subdirectories are already present.
+(root `/`) at build time by `rootfs.sh`, on top of the packages installed
+from source and the generated defaults. The conventional subdirectories are already present.
 
 Examples:
 

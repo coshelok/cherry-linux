@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$PROJECT_DIR/scripts/build-common.sh"
 BUILD_DIR="${BUILD_DIR:-$PROJECT_DIR/build}"
 ROOTFS_DIR="${ROOTFS_DIR:-$BUILD_DIR/rootfs}"
 SOURCES_DIR="${SOURCES_DIR:-$BUILD_DIR/sources}"
@@ -32,7 +33,12 @@ ENABLE_NET="${ENABLE_NET:-1}"
 REBUILD_ROOTFS="${REBUILD_ROOTFS:-0}"
 CMDLINE_EXTRA="${CMDLINE_EXTRA:-}"
 
-export ENABLE_BUSYBOX ENABLE_NET BUILD_DIR ROOTFS_DIR SOURCES_DIR
+for var in BUILD_DIR ROOTFS_DIR SOURCES_DIR HOST_TOOLS_DIR INITRAMFS ROOTFS_SFS STAGING_DIR KERNEL_DIR; do
+    printf -v "$var" '%s' "$(absolute_path "${!var}")"
+done
+KERNEL_IMAGE="$KERNEL_DIR/arch/x86/boot/bzImage"
+THREADS="${THREADS:-$(nproc)}"
+export ENABLE_BUSYBOX ENABLE_NET BUILD_DIR ROOTFS_DIR SOURCES_DIR THREADS REBUILD_ROOTFS
 
 log()  { printf '\033[1;34m[BUILD]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -67,14 +73,13 @@ VERSION_FILE="$PROJECT_DIR/VERSION"
 CHERRY_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
 [[ "$CHERRY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || \
     die "Invalid Cherry Linux version: $CHERRY_VERSION"
-OUTPUT_ISO="${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v${CHERRY_VERSION}.iso}"
+OUTPUT_ISO="$(absolute_path "${OUTPUT_ISO:-$BUILD_DIR/cherrylinux-v${CHERRY_VERSION}.iso}")"
 
 cleanup() {
     rm -rf "$STAGING_DIR"
 }
-trap cleanup EXIT
 
-for cmd in gcc cpio make tar wget nproc chmod cp rm find install tr sha256sum cut readelf grep; do
+for cmd in gcc cpio make tar wget nproc chmod cp rm find install tr sha256sum cut readelf grep realpath flock gzip; do
     need "$cmd"
 done
 
@@ -82,13 +87,19 @@ done
 [[ -f "$BOOT_INIT_SOURCE" ]] || die "Missing $BOOT_INIT_SOURCE"
 [[ -f "$RUNTIME_INIT_SOURCE" ]] || die "Missing $RUNTIME_INIT_SOURCE"
 [[ -f "$KERNEL_CONFIG" ]] || die "Missing kernel config: $KERNEL_CONFIG"
-[[ -x "$LIMINE_DIR/limine" ]] || die "Missing Limine executable: $LIMINE_DIR/limine"
+[[ -f "$LIMINE_DIR/limine.c" ]] || die "Missing Limine host tool source"
 [[ -f "$LIMINE_DIR/limine-bios.sys" ]] || die "Missing Limine BIOS binary"
 [[ -f "$LIMINE_DIR/limine-bios-cd.bin" ]] || die "Missing Limine BIOS CD binary"
 [[ -f "$LIMINE_DIR/limine-uefi-cd.bin" ]] || die "Missing Limine UEFI CD binary"
 
 mkdir -p "$BUILD_DIR" "$HOST_TOOLS_DIR/bin" "$HOST_TOOLS_DIR/src" "$SOURCES_DIR"
+exec 9>"$BUILD_DIR/.build.lock"
+flock -n 9 || die "Another image build is running"
+STAGING_DIR="$(mktemp -d "$BUILD_DIR/iso-staging.XXXXXX")"
+trap cleanup EXIT
 export PATH="$HOST_TOOLS_DIR/bin:$PATH"
+gcc -O2 "$LIMINE_DIR/limine.c" -o "$HOST_TOOLS_DIR/bin/limine"
+"$HOST_TOOLS_DIR/bin/limine" --version >/dev/null
 
 build_kernel() {
     if [[ ! -d "$KERNEL_DIR" ]]; then
@@ -109,7 +120,7 @@ build_kernel() {
     make -C "$KERNEL_DIR" olddefconfig >/dev/null
 
     log "Building Linux $KERNEL_VERSION"
-    make -C "$KERNEL_DIR" -j"$(nproc)" bzImage
+    make -C "$KERNEL_DIR" -j"${THREADS:-$(nproc)}" bzImage
 
     [[ -f "$KERNEL_IMAGE" ]] || die "Kernel build finished but bzImage was not produced: $KERNEL_IMAGE"
 }
@@ -157,7 +168,7 @@ build_xorriso() {
 
     pushd "$src_dir" >/dev/null
     ./configure --prefix="$HOST_TOOLS_DIR" --disable-shared --enable-static >/dev/null
-    make -j"$(nproc)" >/dev/null
+    make -j"${THREADS:-$(nproc)}" >/dev/null
     make install >/dev/null
     popd >/dev/null
 }
@@ -202,19 +213,26 @@ RUNTIME_INIT_BINARY="$BUILD_DIR/runtime-init"
 gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
     "$RUNTIME_INIT_SOURCE" -o "$RUNTIME_INIT_BINARY"
 
+log "Compiling static RAM shutdown helper"
+gcc -static -std=gnu11 -Os -Wall -Wextra -Wpedantic \
+    "$PROJECT_DIR/src/shutdown.c" -o "$BUILD_DIR/shutdown-helper"
+install -Dm755 "$BUILD_DIR/shutdown-helper" "$ROOTFS_DIR/usr/lib/cherry/shutdown"
+rm -f "$BUILD_DIR/shutdown-helper"
 log "Installing runtime init into rootfs"
 install -Dm755 "$RUNTIME_INIT_BINARY" "$ROOTFS_DIR/usr/sbin/init"
 
 log "Building SquashFS image"
-rm -f "$ROOTFS_SFS"
-mksquashfs "$ROOTFS_DIR" "$ROOTFS_SFS" \
+rm -f "$ROOTFS_SFS.tmp"
+mksquashfs "$ROOTFS_DIR" "$ROOTFS_SFS.tmp" \
     -comp gzip \
-    -all-root \
+    -action 'guid(0,0)@true' \
+    -action 'guid(1000,1000)@pathname(/home/cherry)||subpathname(/home/cherry)' \
     -no-xattrs \
     -noappend >/dev/null
+mv -f "$ROOTFS_SFS.tmp" "$ROOTFS_SFS"
 
 log "Packing initramfs"
-rm -f "$INITRAMFS"
+rm -f "$INITRAMFS.tmp"
 INITRAMFS_STAGE="$BUILD_DIR/initramfs-stage"
 rm -rf "$INITRAMFS_STAGE"
 mkdir -p "$INITRAMFS_STAGE/bin"
@@ -226,7 +244,8 @@ cpio_files=(init bin bin/busybox)
 (
     cd "$INITRAMFS_STAGE"
     printf '%s\n' "${cpio_files[@]}" | cpio -o -H newc --owner=0:0 --reproducible
-) | gzip -9 -n > "$INITRAMFS"
+) | gzip -9 -n > "$INITRAMFS.tmp"
+mv -f "$INITRAMFS.tmp" "$INITRAMFS"
 rm -rf "$INITRAMFS_STAGE" "$BOOT_INIT_BINARY" "$RUNTIME_INIT_BINARY"
 
 log "Creating ISO staging directory"
@@ -246,19 +265,25 @@ if [[ -n "$CMDLINE_EXTRA" ]]; then
 fi
 log "Kernel cmdline: $KERNEL_CMDLINE"
 
-cat > "$STAGING_DIR/limine.conf" <<EOF_CFG
-timeout: 3
-default_entry: 1
-
-/Cherry Linux
-    protocol: linux
-    kernel_path: boot():/boot/bzImage
-    module_path: boot():/boot/init.cpio.gz
-    cmdline: $KERNEL_CMDLINE
-EOF_CFG
+{
+    printf 'timeout: 5\ndefault_entry: 1\n'
+    for mode in Live Persistent Rescue Debug; do
+        extra=""
+        case "$mode" in
+            Persistent) extra="cherry.persist" ;;
+            Rescue) extra="cherry.rescue" ;;
+            Debug) extra="cherry.debug loglevel=7" ;;
+        esac
+        printf '\n/Cherry Linux %s - %s\n' "$CHERRY_VERSION" "$mode"
+        printf '    protocol: linux\n    kernel_path: boot():/boot/bzImage\n'
+        printf '    module_path: boot():/boot/init.cpio.gz\n    cmdline: %s %s\n' "$KERNEL_CMDLINE" "$extra"
+    done
+} > "$STAGING_DIR/limine.conf"
+# Also support tools which extract the ISO onto a FAT USB filesystem.
+install -Dm644 "$LIMINE_DIR/BOOTX64.EFI" "$STAGING_DIR/EFI/BOOT/BOOTX64.EFI"
 
 log "Packaging ISO"
-rm -f "$OUTPUT_ISO"
+rm -f "$OUTPUT_ISO.tmp"
 xorriso -as mkisofs \
     -iso-level 3 \
     -R -J -joliet-long \
@@ -267,10 +292,12 @@ xorriso -as mkisofs \
     -no-emul-boot -boot-load-size 4 -boot-info-table \
     --efi-boot limine-uefi-cd.bin \
     -efi-boot-part --efi-boot-image --protective-msdos-label \
-    "$STAGING_DIR" -o "$OUTPUT_ISO" >/dev/null
+    "$STAGING_DIR" -o "$OUTPUT_ISO.tmp" >/dev/null
 
 log "Installing Limine BIOS boot record"
-"$LIMINE_DIR/limine" bios-install "$OUTPUT_ISO"
+"$HOST_TOOLS_DIR/bin/limine" bios-install "$OUTPUT_ISO.tmp"
+mv -f "$OUTPUT_ISO.tmp" "$OUTPUT_ISO"
+(cd "$(dirname "$OUTPUT_ISO")"; sha256sum "$(basename "$OUTPUT_ISO")") > "$OUTPUT_ISO.sha256"
 
 log "ISO ready: $OUTPUT_ISO"
 ls -lh "$OUTPUT_ISO"

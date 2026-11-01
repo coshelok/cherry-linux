@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
+#include <time.h>
 
 #define CMDLINE_MAX 4096
 #define LIVE_CONF "/run/cherry/live.conf"
@@ -27,6 +28,32 @@
 static int opt_debug;
 static int opt_rescue;
 static char opt_hostname[64];
+static int opt_login;
+static volatile sig_atomic_t shutdown_request = -1;
+static int shutting_down;
+static sigset_t event_signals;
+static void perform_shutdown(void);
+
+static void reset_signals(void)
+{
+    sigset_t empty;
+    sigemptyset(&empty);
+    sigprocmask(SIG_SETMASK, &empty, NULL);
+}
+
+/* Signals stay blocked between checks; sigtimedwait cannot lose a request. */
+static void wait_event(int milliseconds)
+{
+    struct timespec timeout = { milliseconds / 1000,
+                               (milliseconds % 1000) * 1000000L };
+    int sig = sigtimedwait(&event_signals, NULL, &timeout);
+    if (shutdown_request < 0) {
+        if (sig == SIGUSR1) shutdown_request = 0;
+        if (sig == SIGUSR2) shutdown_request = 1;
+        if (sig == SIGTERM) shutdown_request = 2;
+    }
+}
+
 
 static void log_msg(const char *level, const char *fmt, ...)
 {
@@ -54,7 +81,7 @@ static void debug_msg(const char *fmt, ...)
     va_end(ap);
 }
 
-static void fatal(const char *fmt, ...)
+static _Noreturn void fatal(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -64,9 +91,28 @@ static void fatal(const char *fmt, ...)
     fflush(stderr);
     va_end(ap);
 
-    sync();
-    reboot(RB_POWER_OFF);
-    for (;;) pause();
+    if (getpid() != 1)
+        exit(EXIT_FAILURE);
+    /* Keep PID 1 alive if the recovery shell exits. */
+    reset_signals();
+    for (;;) {
+        fprintf(stderr, "[INIT] Emergency shell; exit to reopen. Use busybox reboot -f to restart.\n");
+        pid_t pid = fork();
+        if (pid == 0) {
+            setsid();
+            int fd = open("/dev/console", O_RDWR);
+            if (fd >= 0) {
+                ioctl(fd, TIOCSCTTY, 1);
+                dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
+                if (fd > 2) close(fd);
+            }
+            execl("/usr/bin/busybox", "busybox", "sh", "-i", (char *)NULL);
+            _exit(127);
+        }
+        if (pid > 0)
+            while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {}
+        sleep(1);
+    }
 }
 
 static int read_first_line(const char *path, char *buf, size_t size)
@@ -116,6 +162,8 @@ static void parse_cmdline(void)
                    strcmp(tok, "rescue") == 0 ||
                    strcmp(tok, "cherry.rescue") == 0) {
             opt_rescue = 1;
+        } else if (strcmp(tok, "cherry.login") == 0) {
+            opt_login = 1;
         } else if (strncmp(tok, "cherry.hostname=", 16) == 0) {
             snprintf(opt_hostname, sizeof(opt_hostname), "%s", tok + 16);
         }
@@ -230,6 +278,7 @@ static void run_mdev(void)
     if (pid == 0) {
         /* -d subscribes to netlink before scanning /sys, then daemonizes.
          * The default kernel does not enable the legacy hotplug helper. */
+        reset_signals();
         char *const argv[] = { "mdev", "-d", NULL };
         execv(MDEV_PATH, argv);
         _exit(127);
@@ -246,26 +295,38 @@ static void run_mdev(void)
 
 static void run_script(const char *path)
 {
-    if (access(path, X_OK) != 0)
-        return;
-
+    if (access(path, X_OK) != 0) return;
     debug_msg("running %s", path);
-
     pid_t pid = fork();
-    if (pid < 0) {
-        log_msg("WARN", "fork %s: %s", path, strerror(errno));
-        return;
-    }
-
+    if (pid < 0) { log_msg("WARN", "fork %s: %s", path, strerror(errno)); return; }
     if (pid == 0) {
-        char *const argv[] = { (char *)path, NULL };
-        execv(path, argv);
+        reset_signals();
+        setsid();
+        execl(path, path, (char *)NULL);
         _exit(127);
     }
-
-    int status;
-    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
-        ;
+    struct timespec started, now;
+    clock_gettime(CLOCK_MONOTONIC, &started);
+    for (;;) {
+        int status;
+        pid_t result = waitpid(pid, &status, WNOHANG);
+        if (result == pid) {
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+                log_msg("WARN", "%s failed (status %d)", path, status);
+            return;
+        }
+        if (result < 0 && errno != EINTR) return;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if ((!shutting_down && shutdown_request >= 0) || now.tv_sec - started.tv_sec >= 30) {
+            log_msg("WARN", "stopping %s (shutdown or 30 second timeout)", path);
+            kill(-pid, SIGTERM); kill(pid, SIGTERM);
+            wait_event(200);
+            kill(-pid, SIGKILL); kill(pid, SIGKILL);
+            while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {}
+            return;
+        }
+        wait_event(100);
+    }
 }
 
 static int open_console_tty(void)
@@ -354,6 +415,7 @@ static pid_t start_shell(void)
         fatal("fork shell: %s", strerror(errno));
 
     if (pid == 0) {
+        reset_signals();
         if (setsid() < 0) {
             fprintf(stderr, "[INIT] setsid failed: %s\n", strerror(errno));
             _exit(127);
@@ -384,6 +446,18 @@ static pid_t start_shell(void)
         (void)signal(SIGTTIN, SIG_DFL);
         (void)signal(SIGTTOU, SIG_DFL);
 
+        if (!opt_rescue) {
+            if (opt_login)
+                execl("/usr/bin/getty", "getty", "-L", "-", "115200", "linux", (char *)NULL);
+            else
+                execl("/usr/bin/getty", "getty", "-L", "-n", "-l",
+                      "/usr/lib/cherry/live-login", "-", "115200", "linux", (char *)NULL);
+            if (opt_login) {
+                fprintf(stderr, "[INIT] password login requested but getty unavailable\n");
+                _exit(127);
+            }
+            fprintf(stderr, "[INIT] getty unavailable; using rescue shell\n");
+        }
         char *const shell_argv[] = { "sh", "-i", NULL };
         execv("/bin/sh", shell_argv);
 
@@ -408,58 +482,62 @@ static void reap_children(void)
     }
 }
 
-static volatile sig_atomic_t shutdown_request = -1;
-
-static void shutdown_signal_handler(int sig)
-{
-    if (sig == SIGUSR1)      /* BusyBox halt */
-        shutdown_request = 0;
-    else if (sig == SIGUSR2) /* BusyBox poweroff */
-        shutdown_request = 1;
-    else if (sig == SIGTERM) /* BusyBox reboot */
-        shutdown_request = 2;
-}
-
 static void install_shutdown_handlers(void)
 {
-    static const int sigs[] = { SIGUSR1, SIGUSR2, SIGTERM };
-    struct sigaction sa;
+    sigemptyset(&event_signals);
+    sigaddset(&event_signals, SIGCHLD);
+    sigaddset(&event_signals, SIGUSR1);
+    sigaddset(&event_signals, SIGUSR2);
+    sigaddset(&event_signals, SIGTERM);
+    if (sigprocmask(SIG_BLOCK, &event_signals, NULL) < 0)
+        fatal("cannot block init signals: %s", strerror(errno));
+}
 
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = shutdown_signal_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0; /* no SA_RESTART: let signals interrupt waitpid() */
-
-    for (size_t i = 0; i < sizeof(sigs) / sizeof(sigs[0]); ++i)
-        sigaction(sigs[i], &sa, NULL);
+static int stage_shutdown(void)
+{
+    int in = open("/usr/lib/cherry/shutdown", O_RDONLY | O_CLOEXEC);
+    if (in < 0) return -1;
+    int out = open("/run/cherry/shutdown", O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0700);
+    if (out < 0) { close(in); return -1; }
+    char buf[16384];
+    ssize_t n;
+    int ok = 1;
+    while ((n = read(in, buf, sizeof(buf))) > 0) {
+        ssize_t offset = 0;
+        while (offset < n) {
+            ssize_t written = write(out, buf + offset, (size_t)(n - offset));
+            if (written <= 0) { ok = 0; break; }
+            offset += written;
+        }
+        if (!ok) break;
+    }
+    if (n < 0 || fchmod(out, 0700) < 0) ok = 0;
+    close(in); close(out);
+    return ok ? 0 : -1;
 }
 
 static void perform_shutdown(void)
 {
-    static const unsigned int actions[] = {
-        RB_HALT_SYSTEM,
-        RB_POWER_OFF,
-        RB_AUTOBOOT,
-    };
     static const char *const names[] = { "halt", "poweroff", "reboot" };
-
+    shutting_down = 1;
     log_msg("INFO", "Shutdown requested: %s", names[shutdown_request]);
+    if (stage_shutdown() < 0)
+        fatal("cannot stage shutdown helper: %s", strerror(errno));
     run_script(SHUTDOWN_HOOK);
+    kill(-1, SIGTERM); /* Linux excludes PID 1 and kernel threads. */
+    for (int i = 0; i < 20; ++i) { reap_children(); wait_event(100); }
+    kill(-1, SIGKILL);
+    for (int i = 0; i < 10; ++i) { reap_children(); wait_event(100); }
     sync();
-
-    if (reboot(actions[shutdown_request]) == 0) {
-        for (;;)
-            pause();
-    }
-
-    log_msg("FATAL", "reboot syscall failed: %s", strerror(errno));
-    for (;;)
-        pause();
+    execl("/run/cherry/shutdown", "cherry-shutdown", names[shutdown_request], (char *)NULL);
+    fatal("cannot execute shutdown helper: %s", strerror(errno));
 }
 
 static void shell_supervisor(void)
 {
     for (;;) {
+        wait_event(0);
+        if (shutdown_request >= 0) perform_shutdown();
         reap_children();
         log_msg("INFO", "Starting interactive shell");
 
@@ -467,7 +545,9 @@ static void shell_supervisor(void)
 
         for (;;) {
             int status;
-            pid_t pid = waitpid(-1, &status, 0);
+            wait_event(0);
+            if (shutdown_request >= 0) perform_shutdown();
+            pid_t pid = waitpid(-1, &status, WNOHANG);
 
             if (shutdown_request >= 0)
                 perform_shutdown();
@@ -480,10 +560,11 @@ static void shell_supervisor(void)
 
             if (pid == shell_pid)
                 break;
+            if (pid == 0) wait_event(1000);
         }
 
         log_msg("WARN", "Shell exited; restarting in 1 second");
-        sleep(1);
+        wait_event(1000);
     }
 }
 
@@ -494,7 +575,9 @@ static void run_network_setup(void)
 
 static void setup_environment(void)
 {
-    const char *hostname = opt_hostname[0] ? opt_hostname : "cherrylinux";
+    char configured[64] = "cherrylinux";
+    (void)read_first_line("/etc/hostname", configured, sizeof(configured));
+    const char *hostname = opt_hostname[0] ? opt_hostname : configured;
 
     if (sethostname(hostname, strlen(hostname)) < 0)
         log_msg("WARN", "sethostname failed: %s", strerror(errno));
@@ -510,8 +593,11 @@ static void setup_environment(void)
 
 int main(void)
 {
-    if (getpid() != 1)
-        fatal("Cherry runtime init must run as PID 1 (got %ld)", (long)getpid());
+    if (getpid() != 1) {
+        fprintf(stderr, "Cherry runtime init must run as PID 1\n");
+        return EXIT_FAILURE;
+    }
+    install_shutdown_handlers();
 
     parse_cmdline();
 
@@ -520,13 +606,14 @@ int main(void)
     setup_filesystems();
     run_mdev();
     setup_environment();
-    install_shutdown_handlers();
 
     if (opt_rescue) {
         log_msg("INFO", "Rescue mode: skipping network and rc.local");
     } else {
         log_msg("INFO", "Configuring network");
         run_network_setup();
+        wait_event(0);
+        if (shutdown_request >= 0) perform_shutdown();
 
         debug_msg("running /etc/rc.local");
         run_script("/etc/rc.local");
@@ -534,7 +621,17 @@ int main(void)
 
     log_msg("INFO", "System ready");
     printf("\n  Welcome to Cherry Linux\n");
-    printf("  GNU userspace shell: /bin/sh\n\n");
+    const char *persist = getenv("CHERRY_PERSIST");
+    printf("  Changes: %s\n", persist && strcmp(persist, "1") == 0
+           ? "saved to persistence storage" : "RAM only; lost on shutdown");
+    const char *requested = getenv("CHERRY_PERSIST_REQUESTED");
+    if (requested && strcmp(requested, "1") == 0 && (!persist || strcmp(persist, "1") != 0))
+        printf("  WARNING: requested persistence is unavailable. Changes WILL NOT be saved.\n");
+    printf("  Type cherry-help for commands. %s\n\n",
+           opt_login && !opt_rescue ? "Password login enabled." : "Live console runs as root.");
+    /* This directory belongs to the live user, even in a rootless-built image. */
+    if (chown("/home/cherry", 1000, 1000) < 0)
+        log_msg("WARN", "cannot set home ownership: %s", strerror(errno));
     fflush(stdout);
 
     shell_supervisor();

@@ -24,12 +24,12 @@ class RootfsCacheTests(unittest.TestCase):
         self.file = self.project / "overlay/rc.local"
         self.file.write_text("original\n")
 
-    def fingerprint(self, **options):
+    def fingerprint(self, function="rootfs_input_hash", **options):
         env = {"PATH": os.environ["PATH"], "PROJECT_DIR": str(self.project)}
         env.update(options)
         return subprocess.check_output(
             ["bash", "-c", 'source "$PROJECT_DIR/scripts/rootfs-cache.sh"; '
-             'CHERRY_VERSION=$(cat "$PROJECT_DIR/VERSION"); rootfs_input_hash'],
+             'CHERRY_VERSION=$(cat "$PROJECT_DIR/VERSION"); ' + function],
             env=env, text=True,
         ).strip()
 
@@ -74,6 +74,14 @@ class RootfsCacheTests(unittest.TestCase):
             with self.subTest(option=key):
                 self.assertNotEqual(before, self.fingerprint(**{key: value}))
         self.assertEqual(before, self.fingerprint(ENABLE_NET="1", ROOTFS_PROFILE="full"))
+
+    def test_package_cache_survives_overlay_version_and_utility_edits(self):
+        before = self.fingerprint(function="package_input_hash")
+        for filename in ("overlay/rc.local", "VERSION", "utils/cherryfetch", "scripts/rootfs-config.sh"):
+            (self.project / filename).write_text("new configuration\n")
+            self.assertEqual(before, self.fingerprint(function="package_input_hash"))
+        (self.project / "rootfs.sh").write_text("new recipe\n")
+        self.assertNotEqual(before, self.fingerprint(function="package_input_hash"))
 
 
 if __name__ == "__main__":

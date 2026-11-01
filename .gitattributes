@@ -1,0 +1,2 @@
+# Keep CI configuration in Git, but omit it from git archive/source releases.
+/.github export-ignore

@@ -64,7 +64,7 @@ static void debug_msg(const char *fmt, ...)
     va_end(ap);
 }
 
-static void fatal(const char *fmt, ...)
+static _Noreturn void fatal(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -74,9 +74,29 @@ static void fatal(const char *fmt, ...)
     fflush(stderr);
     va_end(ap);
 
-    sync();
-    reboot(RB_POWER_OFF);
-    for (;;) pause();
+    /* A failed boot must leave diagnostics accessible, even without rootfs. */
+    if (getpid() != 1)
+        exit(EXIT_FAILURE);
+    for (;;) {
+        fprintf(stderr, "[BOOT] Emergency shell; exit to reopen it. Use busybox reboot -f to restart.\n");
+        pid_t pid = fork();
+        if (pid == 0) {
+            setsid();
+            int fd = open("/dev/console", O_RDWR);
+            if (fd >= 0) {
+                ioctl(fd, TIOCSCTTY, 1);
+                dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
+                if (fd > 2) close(fd);
+            }
+            setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1);
+            execl("/bin/busybox", "busybox", "sh", "-i", (char *)NULL);
+            execl("/usr/bin/busybox", "busybox", "sh", "-i", (char *)NULL);
+            _exit(127);
+        }
+        if (pid > 0)
+            while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {}
+        sleep(1);
+    }
 }
 
 static void mkdir_required(const char *path, mode_t mode)
@@ -376,18 +396,18 @@ static void persist_device_path(char *out, size_t outsz)
         snprintf(out, outsz, "%s", spec);
     } else if (strncmp(spec, "UUID=", 5) == 0) {
         if (find_blkid("UUID", spec + 5, out, outsz) != 0) {
-            log_msg("WARN", "no device found with UUID %s", spec + 5);
+            debug_msg("no device found with UUID %s", spec + 5);
             out[0] = '\0';
         }
     } else if (strncmp(spec, "LABEL=", 6) == 0) {
         if (find_blkid("LABEL", spec + 6, out, outsz) != 0) {
-            log_msg("WARN", "no device found with label %s", spec + 6);
+            debug_msg("no device found with label %s", spec + 6);
             out[0] = '\0';
         }
     } else {
         /* A bare name without a /dev/ prefix is treated as a label. */
         if (find_blkid("LABEL", spec, out, outsz) != 0) {
-            log_msg("WARN", "no device found with label %s", spec);
+            debug_msg("no device found with label %s", spec);
             out[0] = '\0';
         }
     }
@@ -419,10 +439,10 @@ static int mount_persist_store(const char *dev)
  */
 static int persist_supports_xattrs(void)
 {
-    static const char path[] = PERSIST_MNT "/.cherry-xattr-probe";
+    char path[] = PERSIST_MNT "/.cherry-xattr-probe.XXXXXX";
     static const char value[] = "1";
     int ok = 0;
-    int fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
+    int fd = mkostemp(path, O_CLOEXEC);
 
     if (fd < 0) {
         debug_msg("xattr probe: cannot create %s: %s", path, strerror(errno));
@@ -439,6 +459,18 @@ static int persist_supports_xattrs(void)
     return ok;
 }
 
+static int persist_directory(const char *path)
+{
+    struct stat st;
+    if (mkdir(path, 0755) < 0 && errno != EEXIST)
+        return -1;
+    if (lstat(path, &st) < 0 || !S_ISDIR(st.st_mode)) {
+        errno = ENOTDIR;
+        return -1;
+    }
+    return 0;
+}
+
 static void mount_persistence(void)
 {
     if (!opt_persist) {
@@ -449,7 +481,14 @@ static void mount_persistence(void)
     char dev[PATH_MAX] = {0};
     struct stat st;
 
-    persist_device_path(dev, sizeof(dev));
+    /* USB storage may appear after the boot ISO. Wait a bounded interval. */
+    for (int elapsed = 0; elapsed <= MEDIA_WAIT_MS; elapsed += 500) {
+        persist_device_path(dev, sizeof(dev));
+        if (dev[0] && stat(dev, &st) == 0 && S_ISBLK(st.st_mode))
+            break;
+        dev[0] = '\0';
+        if (elapsed < MEDIA_WAIT_MS) usleep(500000);
+    }
 
     if (dev[0] == '\0') {
         log_msg("WARN", "persistence store not found; continuing with volatile overlay");
@@ -479,12 +518,12 @@ static void mount_persistence(void)
         return;
     }
 
-    if (mkdir(PERSIST_MNT "/upper", 0755) < 0 && errno != EEXIST) {
+    if (persist_directory(PERSIST_MNT "/upper") < 0) {
         log_msg("WARN", "cannot create upper dir: %s", strerror(errno));
         (void)umount2(PERSIST_MNT, MNT_DETACH);
         return;
     }
-    if (mkdir(PERSIST_MNT "/work", 0755) < 0 && errno != EEXIST) {
+    if (persist_directory(PERSIST_MNT "/work") < 0) {
         log_msg("WARN", "cannot create work dir: %s", strerror(errno));
         (void)umount2(PERSIST_MNT, MNT_DETACH);
         return;
@@ -584,7 +623,20 @@ static void build_overlay_root(void)
              "lowerdir=/run/cherry/airootfs,upperdir=%s,workdir=%s",
              upperdir, workdir);
 
-    mount_required("overlay", "/new_root", "overlay", 0, options);
+    if (mount("overlay", "/new_root", "overlay", 0, options) < 0) {
+        if (!persist_active)
+            fatal("mount volatile overlay: %s", strerror(errno));
+        log_msg("WARN", "persistent overlay failed: %s; continuing with volatile overlay", strerror(errno));
+        persist_active = 0;
+        umount2(PERSIST_MNT, 0);
+        mkdir_required("/run/cherry/cowspace", 0755);
+        mount_required("tmpfs", "/run/cherry/cowspace", "tmpfs", 0,
+                       "size=" OVERLAY_SIZE ",mode=0755");
+        mkdir_required("/run/cherry/cowspace/upper", 0755);
+        mkdir_required("/run/cherry/cowspace/work", 0755);
+        mount_required("overlay", "/new_root", "overlay", 0,
+                       "lowerdir=/run/cherry/airootfs,upperdir=/run/cherry/cowspace/upper,workdir=/run/cherry/cowspace/work");
+    }
 
     log_msg("INFO", "Overlay root is ready (%s upper)",
             persist_active ? "persistent" : "tmpfs");
@@ -602,8 +654,9 @@ static void write_live_config(void)
     dprintf(fd,
             "# Generated by Cherry Linux boot init\n"
             "CHERRY_LIVE=1\n"
-            "CHERRY_PERSIST=%d\n",
-            persist_active);
+            "CHERRY_PERSIST=%d\n"
+            "CHERRY_PERSIST_REQUESTED=%d\n",
+            persist_active, opt_persist);
     close(fd);
 }
 
@@ -724,8 +777,10 @@ static void exec_runtime_init(void)
 
 int main(void)
 {
-    if (getpid() != 1)
-        fatal("Cherry boot init must run as PID 1 (got %ld)", (long)getpid());
+    if (getpid() != 1) {
+        fprintf(stderr, "Cherry boot init must run as PID 1\n");
+        return EXIT_FAILURE;
+    }
 
     log_msg("INFO", "Starting Cherry Linux bootstrap...");
 
